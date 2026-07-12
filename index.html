@@ -64,6 +64,9 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
 .btn:hover{filter:brightness(1.15);}
 .bc{background:var(--bg3);color:var(--t2);border:1px solid var(--border);}
 .bu{background:var(--blue);color:#fff;font-weight:700;}
+.mchip{height:30px;padding:0 12px;border-radius:8px;border:1px solid var(--border2);background:var(--bg2);color:var(--t3);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;}
+.mchip:hover{border-color:var(--blue);color:var(--blue-t);}
+.mchip.active{background:var(--blue-d);border-color:rgba(59,130,246,0.4);color:var(--blue-t);}
 .fdv{width:1px;height:30px;background:var(--border2);margin:0 4px;align-self:center;}
 .finfo{font-size:11px;color:var(--t3);display:flex;align-items:center;gap:6px;}
 .fdot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;box-shadow:0 0 8px var(--green);}
@@ -175,7 +178,7 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
   <div class="logo-container">
     <img src="https://www.image2url.com/r2/default/images/1783003610845-9a35cdb7-5bd8-4c92-846f-dc204cd111bb.jpg" alt="Logo Empresa" class="logo-img" onerror="this.style.display='none'">
     <div class="htitle">
-      <div>Contas a Pagar
+      <div>Quality Locações - Dashboard Contas a Pagar
         <div class="hsub" id="dsub">Conectando à planilha do Google Sheets...</div>
       </div>
     </div>
@@ -234,7 +237,7 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
 
 <div class="tabs-nav">
   <button class="tab-link active" onclick="switchTab('dashboard')">📊 Painel Consolidado</button>
-  <button class="tab-link" onclick="switchTab('report')">📋 Lista de Títulos Filtrados</button>
+  <button class="tab-link" onclick="switchTab('report')">📋 Lista de Títulos</button>
   <button class="tab-link" onclick="switchTab('advanced')">🧭 Análises Avançadas</button>
 </div>
 
@@ -382,9 +385,28 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
     </div>
   </div>
 
+  <div class="sec" style="color:var(--teal-t)">🗓️ Filtro de Meses <span style="font-size:11px;font-weight:500;">(exclusivo desta aba — não afeta o Painel Consolidado nem a Lista de Títulos)</span></div>
+  <div class="card" style="margin-bottom:20px;">
+    <div id="advMonthFilterRow" style="display:flex;gap:6px;flex-wrap:wrap;">
+      <button type="button" class="mchip active" id="advm-total" onclick="setAdvMonthTotal()">Total</button>
+      <button type="button" class="mchip" id="advm-1"  onclick="toggleAdvMonth(1)">Jan</button>
+      <button type="button" class="mchip" id="advm-2"  onclick="toggleAdvMonth(2)">Fev</button>
+      <button type="button" class="mchip" id="advm-3"  onclick="toggleAdvMonth(3)">Mar</button>
+      <button type="button" class="mchip" id="advm-4"  onclick="toggleAdvMonth(4)">Abr</button>
+      <button type="button" class="mchip" id="advm-5"  onclick="toggleAdvMonth(5)">Mai</button>
+      <button type="button" class="mchip" id="advm-6"  onclick="toggleAdvMonth(6)">Jun</button>
+      <button type="button" class="mchip" id="advm-7"  onclick="toggleAdvMonth(7)">Jul</button>
+      <button type="button" class="mchip" id="advm-8"  onclick="toggleAdvMonth(8)">Ago</button>
+      <button type="button" class="mchip" id="advm-9"  onclick="toggleAdvMonth(9)">Set</button>
+      <button type="button" class="mchip" id="advm-10" onclick="toggleAdvMonth(10)">Out</button>
+      <button type="button" class="mchip" id="advm-11" onclick="toggleAdvMonth(11)">Nov</button>
+      <button type="button" class="mchip" id="advm-12" onclick="toggleAdvMonth(12)">Dez</button>
+    </div>
+  </div>
+
   <div class="sec" style="color:var(--purple-t)">🧾 Naturezas Financeiras — Comparativo Mensal</div>
   <div class="card" style="margin-bottom:20px;">
-    <div class="ct">Valor por Natureza Financeira x Mês <span>(top 12 + outras · todos os meses · valor total · mês atual vs anterior · tendência de fechamento · clique numa natureza para filtrar)</span></div>
+    <div class="ct">Valor por Natureza Financeira x Mês <span>(top 12 + outras · todos os meses selecionados · valor total · mês atual vs anterior · tendência de fechamento · clique numa natureza para filtrar)</span></div>
     <div id="natMonthTable" style="overflow-x:auto;"></div>
   </div>
 
@@ -569,6 +591,28 @@ function buildBars(el,items,n,colors,cfKey,lblW){
 
 // ── MAIN PROCESS ─────────────────────────────────────────────────────────────
 let CH={};
+
+// ── FILTRO DE MESES EXCLUSIVO DA ABA "ANÁLISES AVANÇADAS" (não afeta o resto do dashboard)
+let advMonthSel = new Set(); // vazio = "Total" (todos os meses)
+function toggleAdvMonth(m){
+  if(advMonthSel.has(m)) advMonthSel.delete(m); else advMonthSel.add(m);
+  renderAdvMonthButtons();
+  process(getF());
+}
+function setAdvMonthTotal(){
+  advMonthSel.clear();
+  renderAdvMonthButtons();
+  process(getF());
+}
+function renderAdvMonthButtons(){
+  const totalBtn = document.getElementById('advm-total');
+  if(!totalBtn) return;
+  totalBtn.classList.toggle('active', advMonthSel.size===0);
+  for(let m=1; m<=12; m++){
+    const btn = document.getElementById('advm-'+m);
+    if(btn) btn.classList.toggle('active', advMonthSel.has(m));
+  }
+}
 function dC(id){if(CH[id]){CH[id].destroy();delete CH[id];}}
 const AC=['#ef4444','#f59e0b','#3b82f6','#10b981','#a78bfa'];
 const AORD=['até 30 dias','até 60 dias','até 90 dias','até 120 dias','há mais de 120 dias'];
@@ -590,13 +634,18 @@ function process(records){
   (function renderAdvancedTab(){
     function _daysInMonth(m){ const [y,mo]=m.split('-').map(Number); return new Date(y,mo,0).getDate(); }
 
-    const natMonths = [...new Set(records.filter(r=>r.dt_ref).map(r=>r.dt_ref.slice(0,7)))].sort();
+    // aplica o filtro de meses exclusivo desta aba (Jan-Dez ou Total)
+    const advRecords = advMonthSel.size
+      ? records.filter(r=>r.dt_ref && advMonthSel.has(parseInt(r.dt_ref.slice(5,7),10)))
+      : records;
+
+    const natMonths = [...new Set(advRecords.filter(r=>r.dt_ref).map(r=>r.dt_ref.slice(0,7)))].sort();
     const natCurM  = natMonths.length ? natMonths[natMonths.length-1] : null;
     const natPrevM = natMonths.length>1 ? natMonths[natMonths.length-2] : null;
 
     let natCutDay = 0;
     if(natCurM){
-      records.forEach(r=>{
+      advRecords.forEach(r=>{
         if(r.dt_ref && r.dt_ref.slice(0,7)===natCurM){
           const d=parseInt(r.dt_ref.slice(8,10),10);
           if(d>natCutDay) natCutDay=d;
@@ -605,7 +654,7 @@ function process(records){
     }
 
     const natMonthMap={}, natTotals={};
-    records.forEach(r=>{
+    advRecords.forEach(r=>{
       if(!r.dt_ref) return;
       const m=r.dt_ref.slice(0,7);
       const nat=r.planfin || '[Não classificado]';
