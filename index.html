@@ -157,14 +157,6 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
 
 .footer{text-align:center;font-size:12px;color:var(--t4);margin-top:40px;padding-top:16px;border-top:1px solid var(--border2);font-weight:500;}
 
-/* PRINT / EXPORTAÇÃO DE PDF POR ABA */
-@media print{
-  body *{visibility:hidden;}
-  .tab-content.active, .tab-content.active *{visibility:visible;}
-  .tab-content.active{position:absolute;top:0;left:0;width:100%;margin:0;padding:0;}
-  .tabs-nav,.fbar,.chips,.alert-box{display:none !important;}
-}
-
 @media(max-width:1300px){.kgrid{grid-template-columns:repeat(4,1fr);}}
 @media(max-width:1100px){.row2,.row3{grid-template-columns:1fr;}.kgrid{grid-template-columns:repeat(3,1fr);}}
 @media(max-width:768px){.kgrid{grid-template-columns:repeat(2,1fr);}.fbar{flex-direction:column;align-items:stretch;}.fg{width:100%;}}
@@ -178,7 +170,7 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
   <div class="logo-container">
     <img src="https://www.image2url.com/r2/default/images/1783003610845-9a35cdb7-5bd8-4c92-846f-dc204cd111bb.jpg" alt="Logo Empresa" class="logo-img" onerror="this.style.display='none'">
     <div class="htitle">
-      <div>Quality Locações - Dashboard Contas a Pagar
+      <div>Contas a Pagar
         <div class="hsub" id="dsub">Conectando à planilha do Google Sheets...</div>
       </div>
     </div>
@@ -237,7 +229,7 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
 
 <div class="tabs-nav">
   <button class="tab-link active" onclick="switchTab('dashboard')">📊 Painel Consolidado</button>
-  <button class="tab-link" onclick="switchTab('report')">📋 Lista de Títulos</button>
+  <button class="tab-link" onclick="switchTab('report')">📋 Lista de Títulos Filtrados</button>
   <button class="tab-link" onclick="switchTab('advanced')">🧭 Análises Avançadas</button>
 </div>
 
@@ -375,16 +367,6 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
 </div>
 
 <div id="tab-advanced" class="tab-content">
-  <div class="sec" style="color:var(--blue-t)">📄 Exportar PDF</div>
-  <div class="card" style="margin-bottom:20px;">
-    <p style="font-size:12px;color:var(--t3);margin-bottom:12px;">Gera um PDF da aba escolhida usando o diálogo de impressão do navegador (Ctrl+P / Salvar como PDF), preservando gráficos, tabelas e o tema atual.</p>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;">
-      <button class="btn bu" onclick="exportTabPDF('dashboard')">🖨️ PDF — Painel Consolidado</button>
-      <button class="btn bu" onclick="exportTabPDF('report')">🖨️ PDF — Lista de Títulos Filtrados</button>
-      <button class="btn bu" onclick="exportTabPDF('advanced')">🖨️ PDF — Análises Avançadas</button>
-    </div>
-  </div>
-
   <div class="sec" style="color:var(--teal-t)">🗓️ Filtro de Meses <span style="font-size:11px;font-weight:500;">(exclusivo desta aba — não afeta o Painel Consolidado nem a Lista de Títulos)</span></div>
   <div class="card" style="margin-bottom:20px;">
     <div id="advMonthFilterRow" style="display:flex;gap:6px;flex-wrap:wrap;">
@@ -406,7 +388,7 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
 
   <div class="sec" style="color:var(--purple-t)">🧾 Naturezas Financeiras — Comparativo Mensal</div>
   <div class="card" style="margin-bottom:20px;">
-    <div class="ct">Valor por Natureza Financeira x Mês <span>(top 12 + outras · todos os meses selecionados · valor total · mês atual vs anterior · tendência de fechamento · clique numa natureza para filtrar)</span></div>
+    <div class="ct">Valor por Natureza Financeira x Mês <span>(top 12 + outras · todos os meses selecionados · valor total · mês atual vs anterior · tendência de fechamento · destaque tipográfico: valores maiores em negrito e mais nítidos, menores mais leves · clique numa natureza para filtrar)</span></div>
     <div id="natMonthTable" style="overflow-x:auto;"></div>
   </div>
 
@@ -432,7 +414,9 @@ function switchTab(tabId){
   // Recria os gráficos agora que a aba está visível — corrige clique/filtro em canvases
   // que foram desenhados enquanto a aba estava oculta (display:none) e ficam com a
   // área de detecção de clique desalinhada.
-  if(typeof DATA !== 'undefined' && DATA.length){ setTimeout(()=>process(getF()), 30); }
+  if(typeof DATA !== 'undefined' && DATA.length){
+    setTimeout(()=>{ process(getF()); }, 30);
+  }
 }
 
 // ── THEME ────────────────────────────────────────────────────────────────────
@@ -679,30 +663,71 @@ function process(records){
         ? natSorted.slice(NAT_TOPN).reduce((s,n)=>s+(natTotals[n]||0),0)
         : (natTotals[nat]||0);
 
+      // PASSO 1: calcula todos os valores de cada linha e coleta os valores para a
+      // escala de cor única da tabela (verde = menor valor · vermelho = maior valor)
+      const rowsData = [];
+      const colTotals={}; natMonths.forEach(m=>colTotals[m]=0);
+      let totCur=0, totPrev=0, totProj=0, totGeral=0;
+      const heatVals = [];
+
+      natRows.forEach(nat=>{
+        const rowTotal = getRowTotal(nat);
+        totGeral += rowTotal;
+        if(rowTotal>0) heatVals.push(rowTotal);
+
+        const monthVals={};
+        let curV=0, prevV=0;
+        natMonths.forEach(m=>{
+          const v=getVal(nat,m);
+          monthVals[m]=v;
+          colTotals[m]+=v;
+          if(m===natCurM) curV=v;
+          if(m===natPrevM) prevV=v;
+          if(v>0) heatVals.push(v);
+        });
+        totCur+=curV; totPrev+=prevV;
+
+        let projV=null;
+        if(natCurM && natCutDay>0){
+          projV = curV / natCutDay * _daysInMonth(natCurM);
+          totProj += projV;
+          if(projV>0) heatVals.push(projV);
+        }
+
+        rowsData.push({nat, rowTotal, monthVals, curV, prevV, projV});
+      });
+
+      const heatMin = heatVals.length ? Math.min(...heatVals) : 0;
+      const heatMax = heatVals.length ? Math.max(...heatVals) : 1;
+      // Destaque sóbrio para apresentação à diretoria: nenhuma cor, nenhum preenchimento,
+      // nenhum ícone — apenas o peso e a intensidade (opacidade) do próprio número variam
+      // de forma sutil conforme a magnitude do valor, comparado ao restante da tabela.
+      function heatOpacity(v){
+        if(!v || v<=0) return 1;
+        const ratio = heatMax>heatMin ? (v-heatMin)/(heatMax-heatMin) : 0;
+        return (0.55 + 0.45*ratio).toFixed(2);
+      }
+      function heatWeight(v){
+        if(!v || v<=0) return 400;
+        const ratio = heatMax>heatMin ? (v-heatMin)/(heatMax-heatMin) : 0;
+        return Math.round(500 + 250*ratio);
+      }
+
+      // PASSO 2: monta o HTML já com a formatação condicional aplicada
       let tbl = '<table class="tbl" style="width:100%;"><thead><tr><th>Natureza Financeira</th><th style="text-align:right">Valor Total</th>';
       natMonths.forEach(m=> tbl += `<th style="text-align:right">${mLbl(m)}</th>`);
       tbl += `<th style="text-align:right">Δ Mês Atual vs Anterior</th><th style="text-align:right">Tendência de Fechamento</th></tr></thead><tbody>`;
 
-      const colTotals={}; natMonths.forEach(m=>colTotals[m]=0);
-      let totCur=0, totPrev=0, totProj=0, totGeral=0;
-
-      natRows.forEach(nat=>{
+      rowsData.forEach(({nat, rowTotal, monthVals, curV, prevV, projV})=>{
         const natLbl = nat==='Outras' ? 'Outras Naturezas' : nat;
         const natEsc = nat.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
         const clickable = nat!=='Outras';
-        const rowTotal = getRowTotal(nat);
-        totGeral += rowTotal;
-        tbl += `<tr><td title="${natLbl}" style="${clickable?'cursor:pointer;':''}"${clickable?` onclick="setCF('planfin','${natEsc}')"`:''}>${natLbl.length>38?natLbl.slice(0,38)+'…':natLbl}</td><td class="num" style="font-weight:700;">${fR(rowTotal)}</td>`;
+        tbl += `<tr><td title="${natLbl}" style="${clickable?'cursor:pointer;':''}"${clickable?` onclick="setCF('planfin','${natEsc}')"`:''}>${natLbl.length>38?natLbl.slice(0,38)+'…':natLbl}</td><td class="num" style="font-weight:700;opacity:${heatOpacity(rowTotal)};">${fR(rowTotal)}</td>`;
 
-        let curV=0, prevV=0;
         natMonths.forEach(m=>{
-          const v=getVal(nat,m);
-          colTotals[m]+=v;
-          if(m===natCurM) curV=v;
-          if(m===natPrevM) prevV=v;
-          tbl += `<td class="num">${v?fR(v):'—'}</td>`;
+          const v=monthVals[m];
+          tbl += `<td class="num" style="font-weight:${heatWeight(v)};opacity:${heatOpacity(v)};">${v?fR(v):'—'}</td>`;
         });
-        totCur+=curV; totPrev+=prevV;
 
         let deltaHtml='—';
         if(natPrevM){
@@ -714,14 +739,8 @@ function process(records){
           }
         }
 
-        let projHtml='—';
-        if(natCurM && natCutDay>0){
-          const projV = curV / natCutDay * _daysInMonth(natCurM);
-          totProj += projV;
-          projHtml = fR(projV);
-        }
-
-        tbl += `<td class="num">${deltaHtml}</td><td class="num" style="font-weight:600;">${projHtml}</td></tr>`;
+        const projHtml = projV ? fR(projV) : '—';
+        tbl += `<td class="num">${deltaHtml}</td><td class="num" style="font-weight:600;opacity:${heatOpacity(projV)};">${projHtml}</td></tr>`;
       });
 
       tbl += `<tr style="font-weight:700;border-top:2px solid var(--border);"><td>Total</td><td class="num">${fR(totGeral)}</td>`;
@@ -1230,17 +1249,6 @@ async function loadFromSheet(){
   }catch(err){
     st.style.color = 'var(--red)'; st.textContent = '❌ Falha na conexão'; console.error(err);
   } finally { if(btn) btn.disabled = false; }
-}
-
-// ── EXPORTAÇÃO DE PDF POR ABA (via impressão do navegador) ───────────────────
-function exportTabPDF(tabId){
-  document.querySelectorAll('.tab-link').forEach(btn=>btn.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(box=>box.classList.remove('active'));
-  const linkMap = {dashboard:0, report:1, advanced:2};
-  const links = document.querySelectorAll('.tab-link');
-  if(links[linkMap[tabId]]) links[linkMap[tabId]].classList.add('active');
-  document.getElementById('tab-'+tabId).classList.add('active');
-  setTimeout(()=>{ window.print(); }, 250);
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
