@@ -231,6 +231,7 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
   <button class="tab-link active" onclick="switchTab('dashboard')">📊 Painel Consolidado</button>
   <button class="tab-link" onclick="switchTab('report')">📋 Lista de Títulos Filtrados</button>
   <button class="tab-link" onclick="switchTab('advanced')">🧭 Análises Avançadas</button>
+  <button class="tab-link" onclick="switchTab('osc')">📈 Oscilação de Valores</button>
 </div>
 
 <div class="alert-box" id="auditAlert" onclick="filterUnclassified()">
@@ -399,6 +400,54 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
   </div>
 </div>
 
+<div id="tab-osc" class="tab-content">
+  <div class="fbar" style="margin-bottom:10px;">
+    <div class="fg"><div class="fl">📅 Mês Base</div>
+      <select id="oscMesBase" class="fc" onchange="oscApplyF()"></select></div>
+    <div class="fg"><div class="fl">📅 Mês Comparação</div>
+      <select id="oscMesComp" class="fc" onchange="oscApplyF()"></select></div>
+    <div class="fg"><div class="fl">📍 Projeto</div>
+      <select id="oscProjeto" class="fc" onchange="oscApplyF()"><option value="">Todos</option></select></div>
+    <div class="fg"><div class="fl">🔖 Tipo de Despesas</div>
+      <select id="oscFiltro" class="fc" onchange="oscApplyF()">
+        <option value="">Todos</option>
+        <option value="Despesas Operacionais">Despesas Operacionais</option>
+        <option value="Despesas Não Operacionais">Despesas Não Operacionais</option>
+      </select></div>
+    <div class="fg"><div class="fl">📊 Status</div>
+      <select id="oscStatus" class="fc" onchange="oscApplyF()">
+        <option value="">Todos (Aberto + Liquidado)</option>
+        <option value="Aberto">Somente Aberto</option>
+        <option value="Liquidado">Somente Liquidado (pago)</option>
+      </select></div>
+    <button class="btn bc" onclick="oscClearF()">✕ Limpar</button>
+  </div>
+  <div id="oscPeriodNote" style="font-size:12px;color:var(--t3);margin-bottom:16px;"></div>
+
+  <div class="kgrid" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px;">
+    <div class="kpi info"><div class="kl">Total Mês Base</div><div class="kv" id="oscTotBase">—</div></div>
+    <div class="kpi info"><div class="kl">Total Mês Comparação</div><div class="kv" id="oscTotComp">—</div></div>
+    <div class="kpi warn"><div class="kl">Variação (R$)</div><div class="kv" id="oscVarR">—</div></div>
+    <div class="kpi warn"><div class="kl">Variação (%)</div><div class="kv" id="oscVarPct">—</div></div>
+  </div>
+
+  <div class="sec" style="color:var(--purple-t)">🔀 Principais Contribuintes da Oscilação — Natureza Financeira</div>
+  <div class="card" style="margin-bottom:20px;">
+    <div class="ct">Maiores altas e quedas <span>(top contribuintes, ordenado pela variação absoluta)</span></div>
+    <div style="position:relative;height:360px;"><canvas id="cOscNatureza"></canvas></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+    <div class="card"><div class="ct">Natureza Financeira <span>(variação detalhada)</span></div><div id="oscNaturezaTable" style="overflow-x:auto;max-height:420px;overflow-y:auto;"></div></div>
+    <div class="card"><div class="ct">Projeto <span>(variação detalhada)</span></div><div id="oscProjetoTable" style="overflow-x:auto;max-height:420px;overflow-y:auto;"></div></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+    <div class="card"><div class="ct">Centro de Resultado <span>(variação detalhada)</span></div><div id="oscCRTable" style="overflow-x:auto;max-height:420px;overflow-y:auto;"></div></div>
+    <div class="card"><div class="ct">Fornecedor <span>(top 15 + outros, variação detalhada)</span></div><div id="oscFornecedorTable" style="overflow-x:auto;max-height:420px;overflow-y:auto;"></div></div>
+  </div>
+</div>
+
 <div class="footer" id="footer">Dashboard CAP · Fonte: Google Sheets</div>
 </div>
 
@@ -415,7 +464,7 @@ function switchTab(tabId){
   // que foram desenhados enquanto a aba estava oculta (display:none) e ficam com a
   // área de detecção de clique desalinhada.
   if(typeof DATA !== 'undefined' && DATA.length){
-    setTimeout(()=>{ process(getF()); }, 30);
+    setTimeout(()=>{ process(getF()); if(typeof renderOscTab==='function') renderOscTab(); }, 30);
   }
 }
 
@@ -1158,6 +1207,7 @@ function popSels(){
     items.forEach(x=>{s.innerHTML+=`<option${x===cur?' selected':''}>${x}</option>`;});
   }
   fill('fproj',U('projeto')); fill('fcr', U('cr')); fill('fpf', U('planfin')); fill('forigem', U('origem'));
+  fill('oscProjeto', U('projeto'));
 }
 
 // ── LINK DA SUA API DO GOOGLE APPS SCRIPT ────────────────────────────────────
@@ -1246,9 +1296,183 @@ async function loadFromSheet(){
     Object.keys(CF).forEach(k=>CF[k]=null);
     popSels();
     process(DATA);
+    if(typeof renderOscTab==='function') renderOscTab();
   }catch(err){
     st.style.color = 'var(--red)'; st.textContent = '❌ Falha na conexão'; console.error(err);
   } finally { if(btn) btn.disabled = false; }
+}
+
+// ── ABA "OSCILAÇÃO DE VALORES" (filtro local exclusivo, comparação entre 2 meses) ──
+function _oscDaysInMonth(m){ const [y,mo]=m.split('-').map(Number); return new Date(y,mo,0).getDate(); }
+
+function oscPopulateMonths(){
+  const sel1 = document.getElementById('oscMesBase');
+  const sel2 = document.getElementById('oscMesComp');
+  if(!sel1 || !sel2 || typeof DATA==='undefined') return;
+  const months = [...new Set(DATA.filter(r=>r.dt_ref).map(r=>r.dt_ref.slice(0,7)))].sort();
+  if(!months.length) return;
+  const curBase = sel1.value, curComp = sel2.value;
+  const optHtml = months.map(m=>`<option value="${m}">${mLbl(m)}</option>`).join('');
+  sel1.innerHTML = optHtml;
+  sel2.innerHTML = optHtml;
+  sel1.value = (curBase && months.includes(curBase)) ? curBase : months[Math.max(0, months.length-2)];
+  sel2.value = (curComp && months.includes(curComp)) ? curComp : months[months.length-1];
+}
+
+function oscApplyF(){ renderOscTab(); }
+function oscClearF(){
+  document.getElementById('oscProjeto').value='';
+  document.getElementById('oscFiltro').value='';
+  document.getElementById('oscStatus').value='';
+  document.getElementById('oscMesBase').value='';
+  document.getElementById('oscMesComp').value='';
+  oscPopulateMonths();
+  renderOscTab();
+}
+
+function oscSumByDim(recs, month, dimField, cap){
+  const map={};
+  recs.forEach(r=>{
+    if(!r.dt_ref || r.dt_ref.slice(0,7)!==month) return;
+    if(cap){ const d=parseInt(r.dt_ref.slice(8,10),10); if(d>cap) return; }
+    const k = r[dimField] || '[Não classificado]';
+    map[k]=(map[k]||0)+r.valor;
+  });
+  return map;
+}
+
+function oscRowHtml(k,b,c){
+  const delta = c-b;
+  const arrow = delta>0?'▲':(delta<0?'▼':'—');
+  let pctTxt;
+  if(b===0 && c>0) pctTxt='novo';
+  else if(c===0 && b>0) pctTxt='zerado';
+  else if(b===0) pctTxt='—';
+  else pctTxt = `${Math.abs((delta/Math.abs(b))*100).toFixed(1)}%`;
+  const lbl = String(k);
+  return `<tr><td title="${lbl}">${lbl.length>32?lbl.slice(0,32)+'…':lbl}</td><td class="num">${fR(b)}</td><td class="num">${fR(c)}</td><td class="num" style="font-weight:600;">${arrow} ${fR(Math.abs(delta))}</td><td class="num">${pctTxt}</td></tr>`;
+}
+
+function oscBuildVarianceTable(elId, mapBase, mapComp, topN){
+  const el = document.getElementById(elId);
+  const keys = new Set([...Object.keys(mapBase), ...Object.keys(mapComp)]);
+  let rows = [...keys].map(k=>({ k, b:mapBase[k]||0, c:mapComp[k]||0 }));
+  rows.sort((a,b)=>Math.abs(b.c-b.b) - Math.abs(a.c-a.b));
+  if(!rows.length){ el.innerHTML='<div class="pempty">Sem dados no período selecionado</div>'; return; }
+  let shown = rows, extra = null;
+  if(topN && rows.length>topN){
+    shown = rows.slice(0,topN);
+    const rest = rows.slice(topN);
+    extra = { k:'Outros', b: rest.reduce((s,r)=>s+r.b,0), c: rest.reduce((s,r)=>s+r.c,0) };
+  }
+  let h = '<table class="tbl" style="width:100%;"><thead><tr><th>Item</th><th style="text-align:right">Mês Base</th><th style="text-align:right">Mês Comparação</th><th style="text-align:right">Variação R$</th><th style="text-align:right">Variação %</th></tr></thead><tbody>';
+  shown.forEach(r=> h += oscRowHtml(r.k, r.b, r.c));
+  if(extra) h += oscRowHtml(extra.k, extra.b, extra.c);
+  h += '</tbody></table>';
+  el.innerHTML = h;
+}
+
+function oscRenderTornado(mapBase, mapComp){
+  const keys = new Set([...Object.keys(mapBase), ...Object.keys(mapComp)]);
+  let rows = [...keys].map(k=>({k, delta:(mapComp[k]||0)-(mapBase[k]||0)})).filter(r=>r.delta!==0);
+  rows.sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta));
+  const top = rows.slice(0,14).sort((a,b)=>a.delta-b.delta);
+  dC('cOscNatureza');
+  const canvas = document.getElementById('cOscNatureza');
+  if(!top.length){ const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,9999,9999); return; }
+  CH['cOscNatureza'] = new Chart(canvas, {
+    type:'bar',
+    data:{
+      labels: top.map(r=> r.k.length>26?r.k.slice(0,26)+'…':r.k),
+      datasets:[{
+        data: top.map(r=>r.delta),
+        backgroundColor: top.map(r=> r.delta>=0 ? gv('--blue-t') : gv('--t3')),
+        borderRadius:3, borderSkipped:false
+      }]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{backgroundColor:gv('--bg1'),titleColor:gv('--t1'),bodyColor:gv('--t2'),borderColor:gv('--border'),borderWidth:1,
+          callbacks:{ label:c=> ` ${c.raw>=0?'Alta':'Queda'}: ${fR(Math.abs(c.raw))}` }}
+      },
+      scales:{
+        x:{ ticks:{color:gv('--tick'),callback:v=>fR(v),font:{size:9}}, grid:{color:gv('--grid')}, border:{color:gv('--border2')} },
+        y:{ ticks:{color:gv('--tick'),font:{size:10,weight:'600'}}, grid:{display:false}, border:{color:gv('--border2')} }
+      }
+    }
+  });
+}
+
+function renderOscTab(){
+  if(!document.getElementById('oscTotBase')) return;
+  oscPopulateMonths();
+  const mesBase = document.getElementById('oscMesBase').value;
+  const mesComp = document.getElementById('oscMesComp').value;
+  const projeto = document.getElementById('oscProjeto').value;
+  const filtro  = document.getElementById('oscFiltro').value;
+  const status  = document.getElementById('oscStatus').value;
+  const noteEl  = document.getElementById('oscPeriodNote');
+
+  if(!mesBase || !mesComp){
+    noteEl.textContent = 'Sem meses suficientes na base para comparar.';
+    return;
+  }
+
+  const recs = (typeof DATA!=='undefined'?DATA:[]).filter(r=>{
+    if(projeto && r.projeto!==projeto) return false;
+    if(filtro  && r.filtro !==filtro)  return false;
+    if(status  && r.status !==status)  return false;
+    return true;
+  });
+
+  const allMonths = [...new Set((typeof DATA!=='undefined'?DATA:[]).filter(r=>r.dt_ref).map(r=>r.dt_ref.slice(0,7)))].sort();
+  const globalCurM = allMonths.length ? allMonths[allMonths.length-1] : null;
+  const involvesCurrent = globalCurM && (mesBase===globalCurM || mesComp===globalCurM);
+
+  let cutDayRaw = null;
+  if(involvesCurrent){
+    let cut=0;
+    recs.forEach(r=>{ if(r.dt_ref && r.dt_ref.slice(0,7)===globalCurM){ const d=parseInt(r.dt_ref.slice(8,10),10); if(d>cut) cut=d; } });
+    cutDayRaw = cut;
+  }
+
+  if(involvesCurrent && cutDayRaw>0){
+    noteEl.textContent = `📌 Comparando período corrido: dias 1 a ${cutDayRaw} de ambos os meses, pois ${mLbl(globalCurM)} ainda está em andamento.`;
+  } else {
+    noteEl.textContent = `Comparando meses completos: ${mLbl(mesBase)} vs ${mLbl(mesComp)}.`;
+  }
+
+  const capBase = cutDayRaw ? Math.min(cutDayRaw, _oscDaysInMonth(mesBase)) : null;
+  const capComp = cutDayRaw ? Math.min(cutDayRaw, _oscDaysInMonth(mesComp)) : null;
+
+  function sumTotal(month, cap){
+    let s=0;
+    recs.forEach(r=>{
+      if(!r.dt_ref || r.dt_ref.slice(0,7)!==month) return;
+      if(cap){ const d=parseInt(r.dt_ref.slice(8,10),10); if(d>cap) return; }
+      s += r.valor;
+    });
+    return s;
+  }
+  const totBase = sumTotal(mesBase, capBase);
+  const totComp = sumTotal(mesComp, capComp);
+  document.getElementById('oscTotBase').textContent = fR(totBase);
+  document.getElementById('oscTotComp').textContent = fR(totComp);
+  const deltaR = totComp-totBase;
+  const deltaPct = totBase!==0 ? (deltaR/Math.abs(totBase))*100 : null;
+  document.getElementById('oscVarR').textContent = `${deltaR>=0?'▲':(deltaR<0?'▼':'—')} ${fR(Math.abs(deltaR))}`;
+  document.getElementById('oscVarPct').textContent = deltaPct===null ? '—' : `${deltaR>=0?'▲':'▼'} ${Math.abs(deltaPct).toFixed(1)}%`;
+
+  const natBase = oscSumByDim(recs, mesBase, 'planfin', capBase);
+  const natComp = oscSumByDim(recs, mesComp, 'planfin', capComp);
+  oscRenderTornado(natBase, natComp);
+  oscBuildVarianceTable('oscNaturezaTable', natBase, natComp, 15);
+
+  oscBuildVarianceTable('oscProjetoTable', oscSumByDim(recs, mesBase, 'projeto', capBase), oscSumByDim(recs, mesComp, 'projeto', capComp), 15);
+  oscBuildVarianceTable('oscCRTable', oscSumByDim(recs, mesBase, 'cr', capBase), oscSumByDim(recs, mesComp, 'cr', capComp), 15);
+  oscBuildVarianceTable('oscFornecedorTable', oscSumByDim(recs, mesBase, 'credor', capBase), oscSumByDim(recs, mesComp, 'credor', capComp), 15);
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
