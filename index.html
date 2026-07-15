@@ -494,6 +494,10 @@ function mLbl(m){
   const[y,mo]=m.split('-');
   return['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][+mo-1]+'/'+y.slice(2);
 }
+// "Mês atual" real (data do sistema) — nunca o mês mais distante da planilha, pois títulos
+// em Aberto podem ter vencimento programado bem no futuro (parcelamentos etc.) e não devem
+// ser confundidos com "o mês em andamento" para fins de comparação de período corrido.
+function _realCurrentMonth(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
 
 // ── CHART FILTER STATE ───────────────────────────────────────────────────────
 let CF={credor:null,planfin:null,cr:null,intervalo:null,empresa:null,projeto:null,mes_ref:null,tipocob:null,filtro:null,parcelamento:null,origem:null, auditOnly:false};
@@ -673,18 +677,18 @@ function process(records){
       : records;
 
     const natMonths = [...new Set(advRecords.filter(r=>r.dt_ref).map(r=>r.dt_ref.slice(0,7)))].sort();
-    const natCurM  = natMonths.length ? natMonths[natMonths.length-1] : null;
-    const natPrevM = natMonths.length>1 ? natMonths[natMonths.length-2] : null;
+    const realCurM = _realCurrentMonth();
+    // "Mês atual" da tabela = o mês real de hoje, se ele tiver dado disponível; caso
+    // contrário (ex: filtro de meses exclui o mês corrente), cai para o mês mais recente
+    // disponível no recorte filtrado — mas SEM tratá-lo como "em andamento" nesse caso.
+    const natCurM  = natMonths.includes(realCurM) ? realCurM : (natMonths.length ? natMonths[natMonths.length-1] : null);
+    const isNatCurOngoing = natCurM === realCurM;
+    const natPrevM = natMonths.length ? (()=>{ const idx=natMonths.indexOf(natCurM); return idx>0 ? natMonths[idx-1] : (natMonths.length>1 && idx===-1 ? natMonths[natMonths.length-2] : null); })() : null;
 
-    let natCutDay = 0;
-    if(natCurM){
-      advRecords.forEach(r=>{
-        if(r.dt_ref && r.dt_ref.slice(0,7)===natCurM){
-          const d=parseInt(r.dt_ref.slice(8,10),10);
-          if(d>natCutDay) natCutDay=d;
-        }
-      });
-    }
+    // Corte de dias = dia real do calendário (não "último dia com lançamento"), pois
+    // títulos em Aberto têm vencimento espalhado pelo mês inteiro, inclusive em dias
+    // futuros — usar esse dado inflaria o corte até quase o fim do mês.
+    let natCutDay = isNatCurOngoing ? new Date().getDate() : 0;
 
     const natMonthMap={}, natTotals={};
     advRecords.forEach(r=>{
@@ -1304,6 +1308,7 @@ async function loadFromSheet(){
 
 // ── ABA "OSCILAÇÃO DE VALORES" (filtro local exclusivo, comparação entre 2 meses) ──
 function _oscDaysInMonth(m){ const [y,mo]=m.split('-').map(Number); return new Date(y,mo,0).getDate(); }
+function _oscRealCurrentMonth(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
 
 function oscPopulateMonths(){
   const sel1 = document.getElementById('oscMesBase');
@@ -1315,8 +1320,19 @@ function oscPopulateMonths(){
   const optHtml = months.map(m=>`<option value="${m}">${mLbl(m)}</option>`).join('');
   sel1.innerHTML = optHtml;
   sel2.innerHTML = optHtml;
-  sel1.value = (curBase && months.includes(curBase)) ? curBase : months[Math.max(0, months.length-2)];
-  sel2.value = (curComp && months.includes(curComp)) ? curComp : months[months.length-1];
+
+  // Padrão inteligente: compara o mês real atual (ou o mês mais recente com dado até hoje)
+  // com o mês anterior a ele — não simplesmente os 2 últimos meses da planilha, já que
+  // títulos "Aberto" podem ter vencimento programado bem no futuro (parcelamentos etc.)
+  // e não devem ser confundidos com "o mês em andamento".
+  const realCurM = _oscRealCurrentMonth();
+  const upToNow = months.filter(m=>m<=realCurM);
+  const defaultComp = upToNow.length ? upToNow[upToNow.length-1] : months[months.length-1];
+  const compIdx = months.indexOf(defaultComp);
+  const defaultBase = compIdx>0 ? months[compIdx-1] : months[0];
+
+  sel1.value = (curBase && months.includes(curBase)) ? curBase : defaultBase;
+  sel2.value = (curComp && months.includes(curComp)) ? curComp : defaultComp;
 }
 
 function oscApplyF(){ renderOscTab(); }
@@ -1427,19 +1443,21 @@ function renderOscTab(){
     return true;
   });
 
-  const allMonths = [...new Set((typeof DATA!=='undefined'?DATA:[]).filter(r=>r.dt_ref).map(r=>r.dt_ref.slice(0,7)))].sort();
-  const globalCurM = allMonths.length ? allMonths[allMonths.length-1] : null;
-  const involvesCurrent = globalCurM && (mesBase===globalCurM || mesComp===globalCurM);
+  // "Mês atual" é ancorado na data real de hoje — não no mês mais distante da planilha,
+  // já que títulos "Aberto" podem ter vencimento programado bem no futuro.
+  const realCurM = _oscRealCurrentMonth();
+  const involvesCurrent = (mesBase===realCurM || mesComp===realCurM);
 
   let cutDayRaw = null;
   if(involvesCurrent){
-    let cut=0;
-    recs.forEach(r=>{ if(r.dt_ref && r.dt_ref.slice(0,7)===globalCurM){ const d=parseInt(r.dt_ref.slice(8,10),10); if(d>cut) cut=d; } });
-    cutDayRaw = cut;
+    // Usa o dia real do calendário (não o "último dia com lançamento"), pois títulos em
+    // Aberto têm vencimento programado ao longo de todo o mês — inclusive em dias futuros
+    // — e usar esse dado inflaria o corte até quase o fim do mês mesmo no início dele.
+    cutDayRaw = new Date().getDate();
   }
 
   if(involvesCurrent && cutDayRaw>0){
-    noteEl.textContent = `📌 Comparando período corrido: dias 1 a ${cutDayRaw} de ambos os meses, pois ${mLbl(globalCurM)} ainda está em andamento.`;
+    noteEl.textContent = `📌 Comparando período corrido: dias 1 a ${cutDayRaw} de ambos os meses, pois ${mLbl(realCurM)} ainda está em andamento.`;
   } else {
     noteEl.textContent = `Comparando meses completos: ${mLbl(mesBase)} vs ${mLbl(mesComp)}.`;
   }
