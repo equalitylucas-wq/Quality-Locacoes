@@ -185,14 +185,13 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
 <div class="tabs-nav">
   <button class="tab-link active" onclick="switchTab('dashboard')">📊 Painel Consolidado</button>
   <button class="tab-link" onclick="switchTab('advanced')">🧭 Análises Mensais</button>
-  <button class="tab-link" onclick="switchTab('osc')">📈 Oscilação de Valores</button>
+  <button class="tab-link" onclick="switchTab('osc')">📈 Analise de Oscilações</button>  
   <button class="tab-link" onclick="switchTab('report')">📋 Tabela de Titulos</button>
 </div>
 
 <div class="alert-box" id="auditAlert" onclick="filterUnclassified()">
   <div>⚠️ <span id="auditCount">0</span> lançamentos pendentes de classificação (Sem CR, Projeto ou Natureza). Clique aqui para isolar.</div>
 </div>
-
 
 <div class="fbar">
   <div class="fg"><div class="fl">📅 Data de</div><input type="date" id="fini" class="fc" onchange="applyF()"></div>
@@ -238,7 +237,6 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
 </div>
 
 <div class="chips" id="chips"></div>
-
 
 
 <div id="tab-dashboard" class="tab-content active">
@@ -436,14 +434,27 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
     <div class="kpi warn"><div class="kl">Variação (%)</div><div class="kv" id="oscVarPct">—</div></div>
   </div>
 
+  <div class="sec" style="color:var(--yellow)">🎯 Principais Responsáveis pela Oscilação</div>
+  <div class="card" style="margin-bottom:20px;">
+    <div class="ct">Top 3 — Natureza Financeira <span>(clique num item para ver a tendência mensal completa)</span></div>
+    <div id="oscTopReasons"></div>
+  </div>
+  
+   <div class="card" style="margin-bottom:20px;">
+    <div class="ct" id="oscTrendTitle">Tendência Mensal <span>(clique numa natureza para visualizar)</span></div>
+    <div style="position:relative;height:240px;"><canvas id="cOscTrend"></canvas></div>
+  </div>
+
   <div class="sec" style="color:var(--purple-t)">🔀 Principais Contribuintes da Oscilação — Natureza Financeira</div>
   <div class="card" style="margin-bottom:20px;">
-    <div class="ct">Maiores altas e quedas <span>(top contribuintes, ordenado pela variação absoluta)</span></div>
+    <div class="ct">Maiores altas e quedas <span>(top contribuintes, ordenado pela variação absoluta · clique numa barra para ver a tendência mensal)</span></div>
     <div style="position:relative;height:360px;"><canvas id="cOscNatureza"></canvas></div>
   </div>
 
+ 
+
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
-    <div class="card"><div class="ct">Natureza Financeira <span>(variação detalhada)</span></div><div id="oscNaturezaTable" style="overflow-x:auto;max-height:420px;overflow-y:auto;"></div></div>
+    <div class="card"><div class="ct">Natureza Financeira <span>(variação detalhada · clique para ver tendência)</span></div><div id="oscNaturezaTable" style="overflow-x:auto;max-height:420px;overflow-y:auto;"></div></div>
     <div class="card"><div class="ct">Projeto <span>(variação detalhada)</span></div><div id="oscProjetoTable" style="overflow-x:auto;max-height:420px;overflow-y:auto;"></div></div>
   </div>
 
@@ -1364,7 +1375,7 @@ function oscSumByDim(recs, month, dimField, cap){
   return map;
 }
 
-function oscRowHtml(k,b,c){
+function oscRowHtml(k,b,c,clickable){
   const delta = c-b;
   const arrow = delta>0?'▲':(delta<0?'▼':'—');
   const color = delta>0 ? 'var(--red)' : (delta<0 ? 'var(--green-t)' : 'var(--t2)');
@@ -1374,10 +1385,13 @@ function oscRowHtml(k,b,c){
   else if(b===0) pctTxt='—';
   else pctTxt = `${Math.abs((delta/Math.abs(b))*100).toFixed(1)}%`;
   const lbl = String(k);
-  return `<tr><td title="${lbl}">${lbl.length>32?lbl.slice(0,32)+'…':lbl}</td><td class="num">${fR(b)}</td><td class="num">${fR(c)}</td><td class="num" style="font-weight:600;color:${color};">${arrow} ${fR(Math.abs(delta))}</td><td class="num" style="color:${color};">${pctTxt}</td></tr>`;
+  const canClick = clickable && k!=='Outros';
+  const kEsc = lbl.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  const tdAttrs = canClick ? ` style="cursor:pointer;" onclick="oscShowTrend('${kEsc}')" title="${lbl} — clique para ver a tendência mensal"` : ` title="${lbl}"`;
+  return `<tr><td${tdAttrs}>${lbl.length>32?lbl.slice(0,32)+'…':lbl}</td><td class="num">${fR(b)}</td><td class="num">${fR(c)}</td><td class="num" style="font-weight:600;color:${color};">${arrow} ${fR(Math.abs(delta))}</td><td class="num" style="color:${color};">${pctTxt}</td></tr>`;
 }
 
-function oscBuildVarianceTable(elId, mapBase, mapComp, topN, labelBase, labelComp){
+function oscBuildVarianceTable(elId, mapBase, mapComp, topN, labelBase, labelComp, clickable){
   const el = document.getElementById(elId);
   const keys = new Set([...Object.keys(mapBase), ...Object.keys(mapComp)]);
   let rows = [...keys].map(k=>({ k, b:mapBase[k]||0, c:mapComp[k]||0 }));
@@ -1390,8 +1404,8 @@ function oscBuildVarianceTable(elId, mapBase, mapComp, topN, labelBase, labelCom
     extra = { k:'Outros', b: rest.reduce((s,r)=>s+r.b,0), c: rest.reduce((s,r)=>s+r.c,0) };
   }
   let h = `<table class="tbl" style="width:100%;"><thead><tr><th>Item</th><th style="text-align:right">${labelBase}</th><th style="text-align:right">${labelComp}</th><th style="text-align:right">Variação R$</th><th style="text-align:right">Variação %</th></tr></thead><tbody>`;
-  shown.forEach(r=> h += oscRowHtml(r.k, r.b, r.c));
-  if(extra) h += oscRowHtml(extra.k, extra.b, extra.c);
+  shown.forEach(r=> h += oscRowHtml(r.k, r.b, r.c, clickable));
+  if(extra) h += oscRowHtml(extra.k, extra.b, extra.c, clickable);
   h += '</tbody></table>';
   el.innerHTML = h;
 }
@@ -1421,9 +1435,90 @@ function oscRenderTornado(mapBase, mapComp){
         tooltip:{backgroundColor:gv('--bg1'),titleColor:gv('--t1'),bodyColor:gv('--t2'),borderColor:gv('--border'),borderWidth:1,
           callbacks:{ label:c=> ` ${c.raw>=0?'Alta':'Queda'}: ${fR(Math.abs(c.raw))}` }}
       },
+      onClick:(evt,els)=>{ if(els.length){ oscShowTrend(top[els[0].index].k); } },
+      onHover:(evt,els)=>{ evt.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
       scales:{
         x:{ ticks:{color:gv('--tick'),callback:v=>fR(v),font:{size:9}}, grid:{color:gv('--grid')}, border:{color:gv('--border2')} },
         y:{ ticks:{color:gv('--tick'),font:{size:10,weight:'600'}}, grid:{display:false}, border:{color:gv('--border2')} }
+      }
+    }
+  });
+}
+
+// Top 3 responsáveis pela oscilação (Natureza Financeira) — resumo de leitura rápida
+function oscBuildTopReasons(mapBase, mapComp, totalDeltaR){
+  const el = document.getElementById('oscTopReasons');
+  const keys = new Set([...Object.keys(mapBase), ...Object.keys(mapComp)]);
+  let rows = [...keys].map(k=>({k, delta:(mapComp[k]||0)-(mapBase[k]||0)})).filter(r=>r.delta!==0);
+  if(!rows.length){ el.innerHTML = '<div class="pempty">Sem variação relevante no período selecionado</div>'; return; }
+  rows.sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta));
+  const top3 = rows.slice(0,3);
+  const dirWord  = totalDeltaR>=0 ? 'alta' : 'queda';
+  const dirColor = totalDeltaR>=0 ? 'var(--red)' : 'var(--green-t)';
+  let html = `<div style="font-size:13px;color:var(--t2);margin-bottom:10px;">Os 3 maiores responsáveis pela <b style="color:${dirColor}">${dirWord} de ${fR(Math.abs(totalDeltaR))}</b> no total foram:</div>`;
+  html += '<div style="display:flex;flex-direction:column;gap:6px;">';
+  top3.forEach((r,i)=>{
+    const c = r.delta>=0 ? 'var(--red)' : 'var(--green-t)';
+    const arrow = r.delta>=0?'▲':'▼';
+    const kEsc = r.k.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 14px;background:var(--bg2);border-radius:8px;cursor:pointer;" onclick="oscShowTrend('${kEsc}')" title="Clique para ver a tendência mensal">
+      <span style="font-weight:600;">${i+1}. ${r.k}</span>
+      <span style="color:${c};font-weight:700;">${arrow} ${fR(Math.abs(r.delta))}</span>
+    </div>`;
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// Tendência mensal completa de uma Natureza Financeira específica (todos os meses da base,
+// respeitando os filtros de Projeto/Tipo de Despesas/Status ativos, exceto o de mês)
+function oscShowTrend(natureza){
+  if(!natureza) return;
+  const titleEl = document.getElementById('oscTrendTitle');
+  titleEl.innerHTML = `Tendência Mensal — ${natureza} <span>(todos os meses disponíveis, filtros de projeto/tipo/status aplicados)</span>`;
+
+  const projeto = document.getElementById('oscProjeto').value;
+  const filtro  = document.getElementById('oscFiltro').value;
+  const status  = document.getElementById('oscStatus').value;
+
+  const recs = (typeof DATA!=='undefined'?DATA:[]).filter(r=>{
+    if(r.planfin !== natureza) return false;
+    if(projeto && r.projeto!==projeto) return false;
+    if(filtro  && r.filtro !==filtro)  return false;
+    if(status  && r.status !==status)  return false;
+    return true;
+  });
+
+  const monthMap = {};
+  recs.forEach(r=>{ if(r.dt_ref){ const m=r.dt_ref.slice(0,7); monthMap[m]=(monthMap[m]||0)+r.valor; } });
+  const months = Object.keys(monthMap).sort();
+
+  dC('cOscTrend');
+  const canvas = document.getElementById('cOscTrend');
+  if(!months.length){ const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,9999,9999); return; }
+
+  CH['cOscTrend'] = new Chart(canvas, {
+    type:'line',
+    data:{
+      labels: months.map(mLbl),
+      datasets:[{
+        label: natureza,
+        data: months.map(m=>monthMap[m]),
+        borderColor: gv('--blue-t'),
+        backgroundColor: dark ? 'rgba(59,130,246,.08)' : 'rgba(59,130,246,.12)',
+        borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: gv('--blue-t'), tension:.25, fill:true
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{backgroundColor:gv('--bg1'),titleColor:gv('--t1'),bodyColor:gv('--t2'),borderColor:gv('--border'),borderWidth:1,
+          callbacks:{ label:c=> ` ${fR(c.raw)}` }}
+      },
+      scales:{
+        x:{ ticks:{color:gv('--tick'),font:{size:10,weight:'600'}}, grid:{display:false}, border:{color:gv('--border2')} },
+        y:{ ticks:{color:gv('--tick'),callback:v=>fR(v),font:{size:9}}, grid:{color:gv('--grid')}, border:{color:gv('--border2')} }
       }
     }
   });
@@ -1498,7 +1593,8 @@ function renderOscTab(){
   const natBase = oscSumByDim(recs, mesBase, 'planfin', capBase);
   const natComp = oscSumByDim(recs, mesComp, 'planfin', capComp);
   oscRenderTornado(natBase, natComp);
-  oscBuildVarianceTable('oscNaturezaTable', natBase, natComp, 15, lblBase, lblComp);
+  oscBuildTopReasons(natBase, natComp, deltaR);
+  oscBuildVarianceTable('oscNaturezaTable', natBase, natComp, 15, lblBase, lblComp, true);
 
   oscBuildVarianceTable('oscProjetoTable', oscSumByDim(recs, mesBase, 'projeto', capBase), oscSumByDim(recs, mesComp, 'projeto', capComp), 15, lblBase, lblComp);
   oscBuildVarianceTable('oscCRTable', oscSumByDim(recs, mesBase, 'cr', capBase), oscSumByDim(recs, mesComp, 'cr', capComp), 15, lblBase, lblComp);
