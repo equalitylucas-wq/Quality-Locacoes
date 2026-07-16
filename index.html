@@ -170,7 +170,7 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
   <div class="logo-container">
     <img src="https://www.image2url.com/r2/default/images/1783003610845-9a35cdb7-5bd8-4c92-846f-dc204cd111bb.jpg" alt="Logo Empresa" class="logo-img" onerror="this.style.display='none'">
     <div class="htitle">
-      <div>Contas a Pagar
+      <div>Quality Locações - Contas a Pagar
         <div class="hsub" id="dsub">Conectando à planilha do Google Sheets...</div>
       </div>
     </div>
@@ -408,6 +408,8 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
       <select id="oscMesComp" class="fc" onchange="oscApplyF()"></select></div>
     <div class="fg"><div class="fl">📍 Projeto</div>
       <select id="oscProjeto" class="fc" onchange="oscApplyF()"><option value="">Todos</option></select></div>
+    <div class="fg"><div class="fl">📂 Natureza Financeira</div>
+      <select id="oscNatureza" class="fc" onchange="oscApplyF()"><option value="">Todas</option></select></div>
     <div class="fg"><div class="fl">🔖 Tipo de Despesas</div>
       <select id="oscFiltro" class="fc" onchange="oscApplyF()">
         <option value="">Todos</option>
@@ -448,7 +450,7 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
   </div>
 </div>
 
-<div class="footer" id="footer">Dashboard CAP · Fonte: Google Sheets</div>
+<div class="footer" id="footer">Quality Locações · Desenvolvedor: Lucas Santos</div>
 </div>
 
 <script>
@@ -1212,6 +1214,7 @@ function popSels(){
   }
   fill('fproj',U('projeto')); fill('fcr', U('cr')); fill('fpf', U('planfin')); fill('forigem', U('origem'));
   fill('oscProjeto', U('projeto'));
+  fill('oscNatureza', U('planfin'));
 }
 
 // ── LINK DA SUA API DO GOOGLE APPS SCRIPT ────────────────────────────────────
@@ -1338,6 +1341,7 @@ function oscPopulateMonths(){
 function oscApplyF(){ renderOscTab(); }
 function oscClearF(){
   document.getElementById('oscProjeto').value='';
+  document.getElementById('oscNatureza').value='';
   document.getElementById('oscFiltro').value='';
   document.getElementById('oscStatus').value='';
   document.getElementById('oscMesBase').value='';
@@ -1360,16 +1364,17 @@ function oscSumByDim(recs, month, dimField, cap){
 function oscRowHtml(k,b,c){
   const delta = c-b;
   const arrow = delta>0?'▲':(delta<0?'▼':'—');
+  const color = delta>0 ? 'var(--red)' : (delta<0 ? 'var(--green-t)' : 'var(--t2)');
   let pctTxt;
   if(b===0 && c>0) pctTxt='novo';
   else if(c===0 && b>0) pctTxt='zerado';
   else if(b===0) pctTxt='—';
   else pctTxt = `${Math.abs((delta/Math.abs(b))*100).toFixed(1)}%`;
   const lbl = String(k);
-  return `<tr><td title="${lbl}">${lbl.length>32?lbl.slice(0,32)+'…':lbl}</td><td class="num">${fR(b)}</td><td class="num">${fR(c)}</td><td class="num" style="font-weight:600;">${arrow} ${fR(Math.abs(delta))}</td><td class="num">${pctTxt}</td></tr>`;
+  return `<tr><td title="${lbl}">${lbl.length>32?lbl.slice(0,32)+'…':lbl}</td><td class="num">${fR(b)}</td><td class="num">${fR(c)}</td><td class="num" style="font-weight:600;color:${color};">${arrow} ${fR(Math.abs(delta))}</td><td class="num" style="color:${color};">${pctTxt}</td></tr>`;
 }
 
-function oscBuildVarianceTable(elId, mapBase, mapComp, topN){
+function oscBuildVarianceTable(elId, mapBase, mapComp, topN, labelBase, labelComp){
   const el = document.getElementById(elId);
   const keys = new Set([...Object.keys(mapBase), ...Object.keys(mapComp)]);
   let rows = [...keys].map(k=>({ k, b:mapBase[k]||0, c:mapComp[k]||0 }));
@@ -1381,7 +1386,7 @@ function oscBuildVarianceTable(elId, mapBase, mapComp, topN){
     const rest = rows.slice(topN);
     extra = { k:'Outros', b: rest.reduce((s,r)=>s+r.b,0), c: rest.reduce((s,r)=>s+r.c,0) };
   }
-  let h = '<table class="tbl" style="width:100%;"><thead><tr><th>Item</th><th style="text-align:right">Mês Base</th><th style="text-align:right">Mês Comparação</th><th style="text-align:right">Variação R$</th><th style="text-align:right">Variação %</th></tr></thead><tbody>';
+  let h = `<table class="tbl" style="width:100%;"><thead><tr><th>Item</th><th style="text-align:right">${labelBase}</th><th style="text-align:right">${labelComp}</th><th style="text-align:right">Variação R$</th><th style="text-align:right">Variação %</th></tr></thead><tbody>`;
   shown.forEach(r=> h += oscRowHtml(r.k, r.b, r.c));
   if(extra) h += oscRowHtml(extra.k, extra.b, extra.c);
   h += '</tbody></table>';
@@ -1426,10 +1431,11 @@ function renderOscTab(){
   oscPopulateMonths();
   const mesBase = document.getElementById('oscMesBase').value;
   const mesComp = document.getElementById('oscMesComp').value;
-  const projeto = document.getElementById('oscProjeto').value;
-  const filtro  = document.getElementById('oscFiltro').value;
-  const status  = document.getElementById('oscStatus').value;
-  const noteEl  = document.getElementById('oscPeriodNote');
+  const projeto  = document.getElementById('oscProjeto').value;
+  const natureza = document.getElementById('oscNatureza').value;
+  const filtro   = document.getElementById('oscFiltro').value;
+  const status   = document.getElementById('oscStatus').value;
+  const noteEl   = document.getElementById('oscPeriodNote');
 
   if(!mesBase || !mesComp){
     noteEl.textContent = 'Sem meses suficientes na base para comparar.';
@@ -1437,9 +1443,10 @@ function renderOscTab(){
   }
 
   const recs = (typeof DATA!=='undefined'?DATA:[]).filter(r=>{
-    if(projeto && r.projeto!==projeto) return false;
-    if(filtro  && r.filtro !==filtro)  return false;
-    if(status  && r.status !==status)  return false;
+    if(projeto  && r.projeto!==projeto)  return false;
+    if(natureza && r.planfin!==natureza) return false;
+    if(filtro   && r.filtro !==filtro)   return false;
+    if(status   && r.status !==status)   return false;
     return true;
   });
 
@@ -1483,14 +1490,16 @@ function renderOscTab(){
   document.getElementById('oscVarR').textContent = `${deltaR>=0?'▲':(deltaR<0?'▼':'—')} ${fR(Math.abs(deltaR))}`;
   document.getElementById('oscVarPct').textContent = deltaPct===null ? '—' : `${deltaR>=0?'▲':'▼'} ${Math.abs(deltaPct).toFixed(1)}%`;
 
+  const lblBase = mLbl(mesBase), lblComp = mLbl(mesComp);
+
   const natBase = oscSumByDim(recs, mesBase, 'planfin', capBase);
   const natComp = oscSumByDim(recs, mesComp, 'planfin', capComp);
   oscRenderTornado(natBase, natComp);
-  oscBuildVarianceTable('oscNaturezaTable', natBase, natComp, 15);
+  oscBuildVarianceTable('oscNaturezaTable', natBase, natComp, 15, lblBase, lblComp);
 
-  oscBuildVarianceTable('oscProjetoTable', oscSumByDim(recs, mesBase, 'projeto', capBase), oscSumByDim(recs, mesComp, 'projeto', capComp), 15);
-  oscBuildVarianceTable('oscCRTable', oscSumByDim(recs, mesBase, 'cr', capBase), oscSumByDim(recs, mesComp, 'cr', capComp), 15);
-  oscBuildVarianceTable('oscFornecedorTable', oscSumByDim(recs, mesBase, 'credor', capBase), oscSumByDim(recs, mesComp, 'credor', capComp), 15);
+  oscBuildVarianceTable('oscProjetoTable', oscSumByDim(recs, mesBase, 'projeto', capBase), oscSumByDim(recs, mesComp, 'projeto', capComp), 15, lblBase, lblComp);
+  oscBuildVarianceTable('oscCRTable', oscSumByDim(recs, mesBase, 'cr', capBase), oscSumByDim(recs, mesComp, 'cr', capComp), 15, lblBase, lblComp);
+  oscBuildVarianceTable('oscFornecedorTable', oscSumByDim(recs, mesBase, 'credor', capBase), oscSumByDim(recs, mesComp, 'credor', capComp), 15, lblBase, lblComp);
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
