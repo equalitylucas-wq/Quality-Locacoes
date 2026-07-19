@@ -6,6 +6,7 @@
 <title>Dashboard Executivo — Contas a Pagar</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 :root{
   --bg0:#080b11;--bg1:#0e131f;--bg2:#141b2d;--bg3:#1d263b;
@@ -186,6 +187,7 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
   <button class="tab-link active" onclick="switchTab('dashboard')">📊 Painel Consolidado</button>
   <button class="tab-link" onclick="switchTab('advanced')">🧭 Análises Mensais</button>
   <button class="tab-link" onclick="switchTab('osc')">📈 Analise de Oscilações</button>  
+  <button class="tab-link" onclick="switchTab('semanal')">🗓️ Apresentação Semanal</button>
   <button class="tab-link" onclick="switchTab('report')">📋 Tabela de Titulos</button>
 </div>
 
@@ -439,21 +441,8 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
     <div class="ct">Top 3 — Natureza Financeira <span>(clique num item para ver a tendência mensal completa)</span></div>
     <div id="oscTopReasons"></div>
   </div>
-  
-   <div class="card" style="margin-bottom:20px;">
-    <div class="ct" id="oscTrendTitle">Tendência Mensal <span>(clique numa natureza para visualizar)</span></div>
-    <div style="position:relative;height:240px;"><canvas id="cOscTrend"></canvas></div>
-  </div>
-
-  <div class="sec" style="color:var(--purple-t)">🔀 Principais Contribuintes da Oscilação — Natureza Financeira</div>
-  <div class="card" style="margin-bottom:20px;">
-    <div class="ct">Maiores altas e quedas <span>(top contribuintes, ordenado pela variação absoluta · clique numa barra para ver a tendência mensal)</span></div>
-    <div style="position:relative;height:360px;"><canvas id="cOscNatureza"></canvas></div>
-  </div>
-
  
-
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
     <div class="card"><div class="ct">Natureza Financeira <span>(variação detalhada · clique para ver tendência)</span></div><div id="oscNaturezaTable" style="overflow-x:auto;max-height:420px;overflow-y:auto;"></div></div>
     <div class="card"><div class="ct">Projeto <span>(variação detalhada)</span></div><div id="oscProjetoTable" style="overflow-x:auto;max-height:420px;overflow-y:auto;"></div></div>
   </div>
@@ -461,6 +450,82 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
     <div class="card"><div class="ct">Centro de Resultado <span>(variação detalhada)</span></div><div id="oscCRTable" style="overflow-x:auto;max-height:420px;overflow-y:auto;"></div></div>
     <div class="card"><div class="ct">Fornecedor <span>(top 15 + outros, variação detalhada)</span></div><div id="oscFornecedorTable" style="overflow-x:auto;max-height:420px;overflow-y:auto;"></div></div>
+  </div>
+  
+  <div class="sec" style="color:var(--purple-t)">🔀 Principais Contribuintes da Oscilação — Natureza Financeira</div>
+  <div class="card" style="margin-bottom:20px;">
+    <div class="ct">Maiores altas e quedas <span>(top contribuintes, ordenado pela variação absoluta · clique numa barra para ver a tendência mensal)</span></div>
+    <div style="position:relative;height:360px;"><canvas id="cOscNatureza"></canvas></div>
+  </div>
+  
+   <div class="card" style="margin-bottom:20px;">
+    <div class="ct" id="oscTrendTitle">Tendência Mensal <span>(clique numa natureza para visualizar)</span></div>
+    <div style="position:relative;height:240px;"><canvas id="cOscTrend"></canvas></div>
+  </div>
+
+    
+</div>
+
+<div id="tab-semanal" class="tab-content">
+  <div id="semFullCapture">
+  <div class="fbar" style="margin-bottom:10px;">
+    <div class="fg"><div class="fl">📅 Data Início</div>
+      <input type="date" id="semDataIni" class="fc" onchange="semApplyF()"></div>
+    <div class="fg"><div class="fl">Até</div>
+      <input type="date" id="semDataFim" class="fc" onchange="semApplyF()"></div>
+    <div class="fg"><div class="fl">📍 Projeto</div>
+      <select id="semProjeto" class="fc" onchange="semApplyF()"><option value="">Todos</option></select></div>
+    <div class="fg"><div class="fl">🔖 Tipo de Despesa</div>
+      <select id="semFiltro" class="fc" onchange="semApplyF()">
+        <option value="">Todos</option>
+        <option value="Despesas Operacionais">Despesas Operacionais</option>
+        <option value="Despesas Não Operacionais">Despesas Não Operacionais</option>
+      </select></div>
+    <div class="fg"><div class="fl">📊 Status</div>
+      <select id="semStatus" class="fc" onchange="semApplyF()">
+        <option value="">Todos (Aberto + Liquidado)</option>
+        <option value="Aberto">Somente Aberto</option>
+        <option value="Liquidado">Somente Liquidado (pago)</option>
+      </select></div>
+  </div>
+  <div id="semPeriodNote" style="font-size:12px;color:var(--t3);margin-bottom:16px;"></div>
+
+  <div class="kgrid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px;">
+    <div class="kpi info"><div class="kl">Valor Total (Aberto + Liquidado)</div><div class="kv" id="semTotal">—</div><div class="ks" id="semTotalQ">—</div></div>
+    <div class="kpi warn"><div class="kl">Planejado Próxima Semana</div><div class="kv" id="semProxSemana" style="color:var(--yellow)">—</div><div class="ks" id="semProxSemanaQ">—</div></div>
+    <div class="kpi purple"><div class="kl">Fornecedores únicos</div><div class="kv" id="semFornUnicos">—</div><div class="ks">no período</div></div>
+  </div>
+ 
+  <div id="semSlideArea">
+    <div class="sec" style="color:var(--yellow)">🖼️ Ranking por Dimensão <span style="font-size:11px;font-weight:500;">(esta área é a capturada pelo botão "Print dos 3 Rankings")</span></div>
+    <div class="row3">
+      <div class="card">
+        <div class="ct" style="color:var(--purple-t)">🧾 Natureza Financeira <span>(top 12 + outras)</span></div>
+        <div id="semNatureza"></div>
+      </div>
+      <div class="card">
+        <div class="ct" style="color:var(--blue-t)">🏢 Fornecedor <span>(top 12 + outros)</span></div>
+        <div id="semFornecedor"></div>
+      </div>
+      <div class="card">
+        <div class="ct" style="color:var(--teal-t)">🎯 Centro de Resultado <span>(top 12 + outros)</span></div>
+        <div id="semCR"></div>
+      </div>
+    </div>
+	
+	 <div class="sec" style="color:var(--blue-t)">📊 Pagamentos por Dia</div>
+  <div class="card" style="margin-bottom:20px;">
+    <div class="ct">Valor por dia <span>(Aberto + Liquidado, conforme período e filtros selecionados)</span></div>
+    <div style="position:relative;height:240px;"><canvas id="cSemDiario"></canvas></div>
+  </div>
+	
+  </div>
+  </div>
+
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">
+    <button class="btn bc" onclick="semClearF()">✕ Limpar</button>
+    <button class="btn bu" onclick="semExportImage('semSlideArea','rankings-semanais')">📸 Print dos 3 Rankings</button>
+    <button class="btn bu" onclick="semExportImage('semFullCapture','apresentacao-semanal')">🖼️ Print da Aba Completa</button>
   </div>
 </div>
 
@@ -480,7 +545,11 @@ function switchTab(tabId){
   // que foram desenhados enquanto a aba estava oculta (display:none) e ficam com a
   // área de detecção de clique desalinhada.
   if(typeof DATA !== 'undefined' && DATA.length){
-    setTimeout(()=>{ process(getF()); if(typeof renderOscTab==='function') renderOscTab(); }, 30);
+    setTimeout(()=>{
+      process(getF());
+      if(typeof renderOscTab==='function') renderOscTab();
+      if(typeof renderSemanalTab==='function') renderSemanalTab();
+    }, 30);
   }
 }
 
@@ -1318,6 +1387,7 @@ async function loadFromSheet(){
     popSels();
     process(DATA);
     if(typeof renderOscTab==='function') renderOscTab();
+    if(typeof renderSemanalTab==='function') renderSemanalTab();
   }catch(err){
     st.style.color = 'var(--red)'; st.textContent = '❌ Falha na conexão'; console.error(err);
   } finally { if(btn) btn.disabled = false; }
@@ -1599,6 +1669,203 @@ function renderOscTab(){
   oscBuildVarianceTable('oscProjetoTable', oscSumByDim(recs, mesBase, 'projeto', capBase), oscSumByDim(recs, mesComp, 'projeto', capComp), 15, lblBase, lblComp);
   oscBuildVarianceTable('oscCRTable', oscSumByDim(recs, mesBase, 'cr', capBase), oscSumByDim(recs, mesComp, 'cr', capComp), 15, lblBase, lblComp);
   oscBuildVarianceTable('oscFornecedorTable', oscSumByDim(recs, mesBase, 'credor', capBase), oscSumByDim(recs, mesComp, 'credor', capComp), 15, lblBase, lblComp);
+}
+
+// ── ABA "APRESENTAÇÃO SEMANAL" (período de datas livre p/ reunião) ──
+// Usa r.dt_ref (já aplica a regra Aberto->Vencimento / Liquidado->Baixa) para o
+// período apresentado, e r.dt_venc (Aberto) para o card de planejamento futuro.
+function _semParseISO(s){
+  if(!s) return null;
+  const [y,m,d] = s.split('-').map(Number);
+  return new Date(y,m-1,d);
+}
+function _semISO(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function _semAddDays(d,n){ const r=new Date(d); r.setDate(r.getDate()+n); return r; }
+function _semFmt(d){ return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); }
+
+function semGroupTop(recs, key, n){
+  const map = {};
+  recs.forEach(r=>{
+    const k = r[key] || '[Não classificado]';
+    if(!map[k]) map[k] = {v:0,q:0};
+    map[k].v += r.valor; map[k].q += 1;
+  });
+  let rows = Object.entries(map).map(([l,o])=>({l,v:o.v,q:o.q})).sort((a,b)=>b.v-a.v);
+  let shown = rows, extra = null;
+  if(n && rows.length > n){
+    shown = rows.slice(0,n);
+    const rest = rows.slice(n);
+    extra = { l:'Outros', v: rest.reduce((s,r)=>s+r.v,0), q: rest.reduce((s,r)=>s+r.q,0) };
+  }
+  return { shown, extra };
+}
+
+function semRenderRankBars(elId, recs, key, colors){
+  const el = document.getElementById(elId);
+  const { shown, extra } = semGroupTop(recs, key, 12);
+  const rows = extra ? [...shown, extra] : shown;
+  el.innerHTML = '';
+  if(!rows.length){ el.innerHTML = '<div class="pempty">Nenhum lançamento no período selecionado</div>'; return; }
+  const mx = Math.max(...rows.map(r=>r.v)) || 1;
+  rows.forEach((r,i)=>{
+    const pct = Math.round((r.v/mx)*100);
+    const lbl = String(r.l);
+    const short = lbl.length>34 ? lbl.slice(0,34)+'…' : lbl;
+    el.innerHTML += `<div class="brow" title="${lbl}">
+      <div class="bl" style="flex:0 0 220px">${short}</div>
+      <div class="bbg"><div class="bf" style="width:${pct}%;background:${colors[i%colors.length]};"></div></div>
+      <div class="bv">${fR(r.v)}</div>
+      <div class="bq">${r.q}</div>
+    </div>`;
+  });
+}
+
+function semApplyF(){ if(typeof renderSemanalTab==='function') renderSemanalTab(); }
+function semClearF(){
+  document.getElementById('semDataIni').value='';
+  document.getElementById('semDataFim').value='';
+  document.getElementById('semProjeto').value='';
+  document.getElementById('semFiltro').value='';
+  document.getElementById('semStatus').value='';
+  renderSemanalTab();
+}
+
+// Exporta um bloco da aba semanal (rankings ou aba completa) como PNG, pronto para colar no slide.
+function semExportImage(elId, filename){
+  const el = document.getElementById(elId);
+  if(!el || typeof html2canvas === 'undefined'){ alert('Não foi possível gerar a imagem (biblioteca de captura indisponível).'); return; }
+  const bg = gv('--bg0') || '#0b0e14';
+  html2canvas(el, { backgroundColor: bg, scale: 2, useCORS: true }).then(canvas=>{
+    const link = document.createElement('a');
+    link.download = `${filename}-${_semISO(new Date())}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }).catch(err=>{
+    console.error(err);
+    alert('Falha ao gerar a imagem: ' + err.message);
+  });
+}
+
+function semPopulateProjetos(iniStr, fimStr){
+  const sel = document.getElementById('semProjeto');
+  if(!sel || typeof DATA==='undefined') return;
+  const cur = sel.value;
+  const projetos = [...new Set(DATA.filter(r=>{
+    if(iniStr && r.dt_ref && r.dt_ref < iniStr) return false;
+    if(fimStr && r.dt_ref && r.dt_ref > fimStr) return false;
+    return true;
+  }).map(r=>r.projeto).filter(Boolean))].sort();
+
+  sel.innerHTML = '<option value="">Todos</option>' + projetos.map(p=>`<option${p===cur?' selected':''}>${p}</option>`).join('');
+  // Se o projeto selecionado não existe mais no range escolhido, volta para "Todos"
+  if(cur && !projetos.includes(cur)) sel.value = '';
+}
+
+function renderSemanalTab(){
+  if(!document.getElementById('semTotal')) return;
+
+  const iniStr  = document.getElementById('semDataIni').value;
+  const fimStr  = document.getElementById('semDataFim').value;
+  semPopulateProjetos(iniStr, fimStr);
+  const projeto = document.getElementById('semProjeto').value;
+  const filtro  = document.getElementById('semFiltro').value;
+  const status  = document.getElementById('semStatus').value;
+  const note    = document.getElementById('semPeriodNote');
+
+  const recs = (typeof DATA!=='undefined'?DATA:[]).filter(r=>{
+    if(iniStr && r.dt_ref && r.dt_ref < iniStr) return false;
+    if(fimStr && r.dt_ref && r.dt_ref > fimStr) return false;
+    if(projeto && r.projeto !== projeto) return false;
+    if(filtro  && r.filtro  !== filtro)  return false;
+    if(status  && r.status  !== status)  return false;
+    return true;
+  });
+
+  if(!iniStr && !fimStr){
+    note.textContent = '📌 Sem período definido — exibindo todos os lançamentos da base (Aberto + Liquidado). Preencha Data Início e/ou Fim para fechar o recorte da reunião.';
+  } else {
+    const rotIni = iniStr ? _semFmt(_semParseISO(iniStr)) : 'o início da base';
+    const rotFim = fimStr ? _semFmt(_semParseISO(fimStr)) : 'hoje';
+    note.textContent = `📌 Exibindo lançamentos com data de referência (vencimento para Aberto / baixa para Liquidado) de ${rotIni} até ${rotFim} — Aberto e Liquidado somados.`;
+  }
+
+  const totalGeral = recs.reduce((s,r)=>s+r.valor,0);
+  const fornUnicos = new Set(recs.map(r=>r.credor).filter(Boolean)).size;
+
+  document.getElementById('semTotal').textContent = fR(totalGeral);
+  document.getElementById('semTotalQ').textContent = `${recs.length} títulos`;
+  document.getElementById('semFornUnicos').textContent = fornUnicos;
+
+  // ── Planejado para o próximo período (mesma duração do período selecionado,
+  //    aplicado logo em seguida) — só considera títulos em Aberto pelo vencimento,
+  //    pois é o que ainda está para ser pago.
+  const ini = _semParseISO(iniStr), fim = _semParseISO(fimStr);
+  if(ini && fim && fim >= ini){
+    const days = Math.round((fim-ini)/86400000) + 1;
+    const nextIni = _semAddDays(fim,1);
+    const nextFim = _semAddDays(nextIni, days-1);
+    const nextIniStr = _semISO(nextIni), nextFimStr = _semISO(nextFim);
+
+    const nextRecs = DATA.filter(r=>{
+      if(r.status !== 'Aberto') return false;
+      if(!r.dt_venc || r.dt_venc < nextIniStr || r.dt_venc > nextFimStr) return false;
+      if(projeto && r.projeto !== projeto) return false;
+      if(filtro  && r.filtro  !== filtro)  return false;
+      return true;
+    });
+    const totalProx = nextRecs.reduce((s,r)=>s+r.valor,0);
+    document.getElementById('semProxSemana').textContent = fR(totalProx);
+    document.getElementById('semProxSemanaQ').textContent = `${nextRecs.length} títulos · ${_semFmt(nextIni)} a ${_semFmt(nextFim)}`;
+  } else {
+    document.getElementById('semProxSemana').textContent = '—';
+    document.getElementById('semProxSemanaQ').textContent = 'Defina Início e Fim para calcular';
+  }
+
+  const C1=['#8b5cf6','#a78bfa','#7c3aed','#6d28d9','#5b21b6'];
+  const C2=['#3b82f6','#60a5fa','#2563eb','#1d4ed8','#1e40af'];
+  const C3=['#0f766e','#14b8a6','#2dd4bf','#0d9488','#115e59'];
+
+  semRenderRankBars('semNatureza',   recs, 'planfin', C1);
+  semRenderRankBars('semFornecedor', recs, 'credor',  C2);
+  semRenderRankBars('semCR',         recs, 'cr',      C3);
+  semRenderDailyChart(recs);
+}
+
+function semRenderDailyChart(recs){
+  const canvas = document.getElementById('cSemDiario');
+  if(!canvas) return;
+  dC('cSemDiario');
+
+  const dayMap = {};
+  recs.forEach(r=>{ if(r.dt_ref) dayMap[r.dt_ref] = (dayMap[r.dt_ref]||0) + r.valor; });
+  const days = Object.keys(dayMap).sort();
+
+  if(!days.length){ const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,9999,9999); return; }
+
+  CH['cSemDiario'] = new Chart(canvas, {
+    type:'bar',
+    data:{
+      labels: days.map(d=>_semFmt(_semParseISO(d))),
+      datasets:[{
+        label:'Valor pago (Aberto + Liquidado)',
+        data: days.map(d=>dayMap[d]),
+        backgroundColor: gv('--blue-t'),
+        borderRadius:4, borderSkipped:false
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{backgroundColor:gv('--bg1'),titleColor:gv('--t1'),bodyColor:gv('--t2'),borderColor:gv('--border'),borderWidth:1,
+          callbacks:{ label:c=> ` ${fR(c.raw)}` }}
+      },
+      scales:{
+        x:{ ticks:{color:gv('--tick'),font:{size:10,weight:'600'}}, grid:{display:false}, border:{color:gv('--border2')} },
+        y:{ ticks:{color:gv('--tick'),callback:v=>fR(v),font:{size:9}}, grid:{color:gv('--grid')}, border:{color:gv('--border2')} }
+      }
+    }
+  });
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
