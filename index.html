@@ -441,8 +441,21 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
     <div class="ct">Top 3 — Natureza Financeira <span>(clique num item para ver a tendência mensal completa)</span></div>
     <div id="oscTopReasons"></div>
   </div>
+  
+   <div class="card" style="margin-bottom:20px;">
+    <div class="ct" id="oscTrendTitle">Tendência Mensal <span>(clique numa natureza para visualizar)</span></div>
+    <div style="position:relative;height:240px;"><canvas id="cOscTrend"></canvas></div>
+  </div>
+
+  <div class="sec" style="color:var(--purple-t)">🔀 Principais Contribuintes da Oscilação — Natureza Financeira</div>
+  <div class="card" style="margin-bottom:20px;">
+    <div class="ct">Maiores altas e quedas <span>(top contribuintes, ordenado pela variação absoluta · clique numa barra para ver a tendência mensal)</span></div>
+    <div style="position:relative;height:360px;"><canvas id="cOscNatureza"></canvas></div>
+  </div>
+
  
-   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
     <div class="card"><div class="ct">Natureza Financeira <span>(variação detalhada · clique para ver tendência)</span></div><div id="oscNaturezaTable" style="overflow-x:auto;max-height:420px;overflow-y:auto;"></div></div>
     <div class="card"><div class="ct">Projeto <span>(variação detalhada)</span></div><div id="oscProjetoTable" style="overflow-x:auto;max-height:420px;overflow-y:auto;"></div></div>
   </div>
@@ -451,19 +464,6 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
     <div class="card"><div class="ct">Centro de Resultado <span>(variação detalhada)</span></div><div id="oscCRTable" style="overflow-x:auto;max-height:420px;overflow-y:auto;"></div></div>
     <div class="card"><div class="ct">Fornecedor <span>(top 15 + outros, variação detalhada)</span></div><div id="oscFornecedorTable" style="overflow-x:auto;max-height:420px;overflow-y:auto;"></div></div>
   </div>
-  
-  <div class="sec" style="color:var(--purple-t)">🔀 Principais Contribuintes da Oscilação — Natureza Financeira</div>
-  <div class="card" style="margin-bottom:20px;">
-    <div class="ct">Maiores altas e quedas <span>(top contribuintes, ordenado pela variação absoluta · clique numa barra para ver a tendência mensal)</span></div>
-    <div style="position:relative;height:360px;"><canvas id="cOscNatureza"></canvas></div>
-  </div>
-  
-   <div class="card" style="margin-bottom:20px;">
-    <div class="ct" id="oscTrendTitle">Tendência Mensal <span>(clique numa natureza para visualizar)</span></div>
-    <div style="position:relative;height:240px;"><canvas id="cOscTrend"></canvas></div>
-  </div>
-
-    
 </div>
 
 <div id="tab-semanal" class="tab-content">
@@ -491,11 +491,24 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
   <div id="semPeriodNote" style="font-size:12px;color:var(--t3);margin-bottom:16px;"></div>
 
   <div class="kgrid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px;">
-    <div class="kpi info"><div class="kl">Valor Total (Aberto + Liquidado)</div><div class="kv" id="semTotal">—</div><div class="ks" id="semTotalQ">—</div></div>
-    <div class="kpi warn"><div class="kl">Planejado Próxima Semana</div><div class="kv" id="semProxSemana" style="color:var(--yellow)">—</div><div class="ks" id="semProxSemanaQ">—</div></div>
-    <div class="kpi purple"><div class="kl">Fornecedores únicos</div><div class="kv" id="semFornUnicos">—</div><div class="ks">no período</div></div>
+    <div class="kpi info">
+      <div class="kl">Semana Anterior</div>
+      <div class="kv" id="semWkAnterior">—</div>
+      <div class="ks" id="semWkAnteriorSub">—</div>
+    </div>
+    <div class="kpi purple">
+      <div class="kl">Semana Atual</div>
+      <div class="kv" id="semWkAtual">—</div>
+      <div class="ks" id="semWkAtualSub">—</div>
+    </div>
+    <div class="kpi warn">
+      <div class="kl">Próxima Semana <span style="font-weight:500;">(planejado)</span></div>
+      <div class="kv" id="semWkProxima" style="color:var(--yellow)">—</div>
+      <div class="ks" id="semWkProximaSub">—</div>
+    </div>
   </div>
- 
+
+  
   <div id="semSlideArea">
     <div class="sec" style="color:var(--yellow)">🖼️ Ranking por Dimensão <span style="font-size:11px;font-weight:500;">(esta área é a capturada pelo botão "Print dos 3 Rankings")</span></div>
     <div class="row3">
@@ -513,7 +526,7 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
       </div>
     </div>
 	
-	 <div class="sec" style="color:var(--blue-t)">📊 Pagamentos por Dia</div>
+	<div class="sec" style="color:var(--blue-t)">📊 Pagamentos por Dia</div>
   <div class="card" style="margin-bottom:20px;">
     <div class="ct">Valor por dia <span>(Aberto + Liquidado, conforme período e filtros selecionados)</span></div>
     <div style="position:relative;height:240px;"><canvas id="cSemDiario"></canvas></div>
@@ -1762,7 +1775,7 @@ function semPopulateProjetos(iniStr, fimStr){
 }
 
 function renderSemanalTab(){
-  if(!document.getElementById('semTotal')) return;
+  if(!document.getElementById('semWkAnterior')) return;
 
   const iniStr  = document.getElementById('semDataIni').value;
   const fimStr  = document.getElementById('semDataFim').value;
@@ -1782,44 +1795,14 @@ function renderSemanalTab(){
   });
 
   if(!iniStr && !fimStr){
-    note.textContent = '📌 Sem período definido — exibindo todos os lançamentos da base (Aberto + Liquidado). Preencha Data Início e/ou Fim para fechar o recorte da reunião.';
+    note.textContent = '📌 Sem período definido — exibindo todos os lançamentos da base (Aberto + Liquidado) nos rankings e no gráfico diário. Preencha Data Início e/ou Fim para fechar o recorte da reunião. Sem datas definidas, os cards de semana usam a semana atual do calendário como referência.';
   } else {
     const rotIni = iniStr ? _semFmt(_semParseISO(iniStr)) : 'o início da base';
     const rotFim = fimStr ? _semFmt(_semParseISO(fimStr)) : 'hoje';
-    note.textContent = `📌 Exibindo lançamentos com data de referência (vencimento para Aberto / baixa para Liquidado) de ${rotIni} até ${rotFim} — Aberto e Liquidado somados.`;
+    note.textContent = `📌 Rankings e gráfico diário exibindo lançamentos com data de referência (vencimento para Aberto / baixa para Liquidado) de ${rotIni} até ${rotFim} — Aberto e Liquidado somados. Os cards de semana acima usam esse mesmo período como "Semana Atual".`;
   }
 
-  const totalGeral = recs.reduce((s,r)=>s+r.valor,0);
-  const fornUnicos = new Set(recs.map(r=>r.credor).filter(Boolean)).size;
-
-  document.getElementById('semTotal').textContent = fR(totalGeral);
-  document.getElementById('semTotalQ').textContent = `${recs.length} títulos`;
-  document.getElementById('semFornUnicos').textContent = fornUnicos;
-
-  // ── Planejado para o próximo período (mesma duração do período selecionado,
-  //    aplicado logo em seguida) — só considera títulos em Aberto pelo vencimento,
-  //    pois é o que ainda está para ser pago.
-  const ini = _semParseISO(iniStr), fim = _semParseISO(fimStr);
-  if(ini && fim && fim >= ini){
-    const days = Math.round((fim-ini)/86400000) + 1;
-    const nextIni = _semAddDays(fim,1);
-    const nextFim = _semAddDays(nextIni, days-1);
-    const nextIniStr = _semISO(nextIni), nextFimStr = _semISO(nextFim);
-
-    const nextRecs = DATA.filter(r=>{
-      if(r.status !== 'Aberto') return false;
-      if(!r.dt_venc || r.dt_venc < nextIniStr || r.dt_venc > nextFimStr) return false;
-      if(projeto && r.projeto !== projeto) return false;
-      if(filtro  && r.filtro  !== filtro)  return false;
-      return true;
-    });
-    const totalProx = nextRecs.reduce((s,r)=>s+r.valor,0);
-    document.getElementById('semProxSemana').textContent = fR(totalProx);
-    document.getElementById('semProxSemanaQ').textContent = `${nextRecs.length} títulos · ${_semFmt(nextIni)} a ${_semFmt(nextFim)}`;
-  } else {
-    document.getElementById('semProxSemana').textContent = '—';
-    document.getElementById('semProxSemanaQ').textContent = 'Defina Início e Fim para calcular';
-  }
+  semRenderWeekCards(projeto, filtro, iniStr, fimStr);
 
   const C1=['#8b5cf6','#a78bfa','#7c3aed','#6d28d9','#5b21b6'];
   const C2=['#3b82f6','#60a5fa','#2563eb','#1d4ed8','#1e40af'];
@@ -1829,6 +1812,75 @@ function renderSemanalTab(){
   semRenderRankBars('semFornecedor', recs, 'credor',  C2);
   semRenderRankBars('semCR',         recs, 'cr',      C3);
   semRenderDailyChart(recs);
+}
+
+// ── Cards Semana Anterior / Atual / Próxima (sempre relativos à data de hoje,
+//    independente do filtro de período livre usado nos rankings/gráfico) ──
+function _semMonday(d){
+  const dt = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const dow = (dt.getDay()+6)%7; // 0 = segunda
+  dt.setDate(dt.getDate()-dow);
+  return dt;
+}
+function semPctBadge(cur, base){
+  if(!base){
+    if(!cur) return '<span style="color:var(--t4)">sem variação</span>';
+    return '<span style="color:var(--red)">▲ novo valor</span>';
+  }
+  const pct = ((cur-base)/Math.abs(base))*100;
+  const up = pct >= 0;
+  // Convenção financeira: aumento de despesa = vermelho (desfavorável), queda = verde (favorável)
+  const color = up ? 'var(--red)' : 'var(--green-t)';
+  const arrow = up ? '▲' : '▼';
+  return `<span style="color:${color}">${arrow} ${Math.abs(pct).toFixed(1)}%</span> vs. semana anterior`;
+}
+
+function semRenderWeekCards(projeto, filtro, iniStr, fimStr){
+  if(typeof DATA==='undefined') return;
+
+  // "Semana Atual" = o período selecionado no filtro de Data Início/Fim.
+  // Sem datas definidas, cai para a semana corrente do calendário (segunda a domingo).
+  let wAtu;
+  if(iniStr && fimStr && _semParseISO(fimStr) >= _semParseISO(iniStr)){
+    wAtu = { ini: _semParseISO(iniStr), fim: _semParseISO(fimStr) };
+  } else {
+    const todayMon = _semMonday(new Date());
+    wAtu = { ini: todayMon, fim: _semAddDays(todayMon,6) };
+  }
+  const days = Math.round((wAtu.fim - wAtu.ini)/86400000) + 1;
+
+  // Semana Anterior e Próxima usam a MESMA duração do período selecionado,
+  // encostadas imediatamente antes/depois dele.
+  const wAnt = { ini: _semAddDays(wAtu.ini, -days), fim: _semAddDays(wAtu.ini, -1) };
+  const wPrx = { ini: _semAddDays(wAtu.fim, 1),      fim: _semAddDays(wAtu.fim, days) };
+
+  const sumWeek = (win, {planejado}={}) => {
+    const iStr = _semISO(win.ini), fStr = _semISO(win.fim);
+    const recs = DATA.filter(r=>{
+      if(projeto && r.projeto !== projeto) return false;
+      if(filtro  && r.filtro  !== filtro)  return false;
+      if(planejado){
+        // Próxima semana = apenas títulos em Aberto, pelo vencimento (o que ainda será pago)
+        if(r.status !== 'Aberto') return false;
+        return r.dt_venc && r.dt_venc >= iStr && r.dt_venc <= fStr;
+      }
+      return r.dt_ref && r.dt_ref >= iStr && r.dt_ref <= fStr; // Aberto + Liquidado
+    });
+    return { total: recs.reduce((s,r)=>s+r.valor,0), qtd: recs.length };
+  };
+
+  const ant = sumWeek(wAnt);
+  const atu = sumWeek(wAtu);
+  const prx = sumWeek(wPrx, {planejado:true});
+
+  document.getElementById('semWkAnterior').textContent = fR(ant.total);
+  document.getElementById('semWkAnteriorSub').innerHTML = `${ant.qtd} títulos · ${_semFmt(wAnt.ini)} a ${_semFmt(wAnt.fim)}`;
+
+  document.getElementById('semWkAtual').textContent = fR(atu.total);
+  document.getElementById('semWkAtualSub').innerHTML = `${atu.qtd} títulos · ${_semFmt(wAtu.ini)} a ${_semFmt(wAtu.fim)}<br>${semPctBadge(atu.total, ant.total)}`;
+
+  document.getElementById('semWkProxima').textContent = fR(prx.total);
+  document.getElementById('semWkProximaSub').innerHTML = `${prx.qtd} títulos (Aberto) · ${_semFmt(wPrx.ini)} a ${_semFmt(wPrx.fim)}<br>${semPctBadge(prx.total, atu.total).replace('vs. semana anterior','vs. semana atual')}`;
 }
 
 function semRenderDailyChart(recs){
