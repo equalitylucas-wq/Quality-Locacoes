@@ -122,6 +122,15 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
 .sem-card-insight b{color:var(--t2);font-weight:700;}
 .sem-card-insight-val{color:var(--t2);font-weight:600;white-space:nowrap;}
 .sem-card-insight-empty{margin-top:9px;padding-top:9px;border-top:1px dashed var(--border2);font-size:11.5px;color:var(--t4);font-style:italic;}
+.sem-card-pr{margin-top:9px;padding:9px 0 2px;border-top:1px solid var(--border2);display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.sem-card-pr-item{display:flex;flex-direction:column;gap:2px;}
+.sem-card-pr-lbl{font-size:10px;color:var(--t4);text-transform:uppercase;letter-spacing:.5px;font-weight:700;}
+.sem-card-pr-val{font-size:13.5px;font-weight:800;color:var(--t1);font-variant-numeric:tabular-nums;}
+.sem-card-pr-sub{font-size:10.5px;color:var(--t4);}
+.sem-card-pr-var{font-size:11px;font-weight:700;}
+.sem-card-pr-warn{margin-top:7px;font-size:10.5px;color:var(--yellow);line-height:1.4;}
+.sem-card-pr-link{margin-top:7px;font-size:11px;color:var(--blue-t);cursor:pointer;text-decoration:underline;font-weight:600;}
+.sem-card-pr-link:hover{opacity:.8;}
 .kpi.danger .kv{color:var(--red);} .kpi.warn .kv{color:var(--yellow);} .kpi.success .kv{color:var(--green);}
 .kpi.info .kv{color:var(--blue-t);} .kpi.purple .kv{color:var(--purple-t);} .kpi.teal .kv{color:var(--teal-t);}
 
@@ -760,6 +769,19 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
       <button type="button" class="mchip" id="advm-10" onclick="toggleAdvMonth(10)">Out</button>
       <button type="button" class="mchip" id="advm-11" onclick="toggleAdvMonth(11)">Nov</button>
       <button type="button" class="mchip" id="advm-12" onclick="toggleAdvMonth(12)">Dez</button>
+    </div>
+  </div>
+
+  <div class="sec" style="color:var(--green-t)">📅 Previsto x Realizado — Visão Mensal</div>
+  <div style="font-size:11.5px;color:var(--t4);margin:-10px 0 12px;">Mesma lógica da aba Apresentação Semanal, na janela do mês inteiro. Não é afetado pelo filtro de meses acima (sempre mostra mês atual e anterior).</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+    <div class="card" id="mesPRAnterior">
+      <div class="ct mespr-titulo">—</div>
+      <div class="mespr-body"></div>
+    </div>
+    <div class="card" id="mesPRAtual">
+      <div class="ct mespr-titulo">—</div>
+      <div class="mespr-body"></div>
     </div>
   </div>
 
@@ -1692,6 +1714,11 @@ function process(records){
     }
   })();
 
+  // ── PREVISTO x REALIZADO — VISÃO MENSAL (reaproveita a mesma lógica da aba Semanal,
+  // só que com janela de calendário mensal em vez de semanal). Roda sempre que process()
+  // roda, então acompanha o carregamento normal dos dados sem hook extra.
+  renderMonthlyPRCards();
+
 
 
   // ── ITEM 1: CÁLCULO GERAL DO ALERTA DE AUDITORIA (Baseado em toda a planilha carregada)
@@ -2007,7 +2034,7 @@ const COL_MAP = {
   'dataemissao':'dt_emissao','datavencimento':'dt_venc_raw','dataliquidacao':'dt_baixa_raw',
   'valor':'valor_raw','naturezafinanceira':'planfin','centroderesultado':'cr',
   'parcelamento':'parcelamento','filtro':'filtro','tipocobranca':'tipocob','projeto':'projeto',
-  'origem':'origem',
+  'origem':'origem','datacadastro':'dt_cadastro_raw',
 };
 
 function toISODate(v){
@@ -2020,6 +2047,19 @@ function toISODate(v){
     let [,d,mo,y] = m;
     if(y.length===2) y='20'+y;
     return `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  }
+  // Número serial do Google Sheets/Excel (célula não reconhecida como Date pelo Apps
+  // Script, geralmente por vir de importação/colagem — cai como número cru no CSV).
+  // Epoch do Sheets/Excel: 30/12/1899. Faixa de sanidade ~1970-2100 evita confundir
+  // com outros campos numéricos que porventura passem por aqui.
+  m = s.match(/^\d{4,6}(\.\d+)?$/);
+  if(m){
+    const serial = parseFloat(s);
+    if(serial > 25000 && serial < 73050){
+      const ms = Math.round((serial - 25569) * 86400 * 1000); // 25569 = dias entre 30/12/1899 e 01/01/1970
+      const d = new Date(ms);
+      if(!isNaN(d.getTime())) return _semISO ? _semISO(new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())) : d.toISOString().slice(0,10);
+    }
   }
   return null;
 }
@@ -2056,6 +2096,7 @@ async function loadFromSheet(){
       const dt_venc = toISODate(o.dt_venc_raw);
       const dt_baixa = toISODate(o.dt_baixa_raw);
       const dt_emissao = toISODate(o.dt_emissao);
+      const dt_cadastro = toISODate(o.dt_cadastro_raw);
       const dt_ref = status === 'Liquidado' ? (dt_baixa || dt_venc) : dt_venc;
       return {
         empresa:      String(o.empresa||'').trim(),
@@ -2063,7 +2104,7 @@ async function loadFromSheet(){
         intervalo:    String(o.intervalo||'').trim(),
         credor:       String(o.credor||'').trim(),
         nf_raw:       String(o.nf||'').trim(),
-        dt_ref,dt_venc,dt_baixa,dt_emissao,
+        dt_ref,dt_venc,dt_baixa,dt_emissao,dt_cadastro,
         valor:        parseValorBR(o.valor_raw),
         planfin:      String(o.planfin||'').trim(),
         cr:           String(o.cr||'').trim(),
@@ -3244,6 +3285,165 @@ function semPctInfo(cur, base, vsLabel){
   return { html: `<span style="color:${color}">${arrow} ${Math.abs(pct).toFixed(1)}%</span> vs. ${vsLabel}${tag}`, big };
 }
 
+// ── Previsto x Realizado ──────────────────────────────────────────────────
+// Previsto = tudo que já estava na base (Data Cadastro) ANTES do início da semana
+//            e cujo vencimento (dt_venc) cai dentro da semana — ou seja, "o que eu
+//            tinha pra pagar" na foto do início da semana, independente do status atual.
+// Realizado = dos títulos que VENCEM nessa mesma semana (dt_venc, não Data de
+//             Liquidação — a baixa no sistema atrasa em relação ao vencimento real,
+//             que é quando o pagamento de fato sai), conta como pago:
+//               • todo Liquidado, OU
+//               • todo Aberto cujo vencimento já passou (dt_venc < hoje) — presume-se
+//                 atraso de baixa administrativa, não necessariamente inadimplência.
+//             Um Aberto com vencimento ainda no futuro continua de fora (ainda não
+//             venceu, não dá pra presumir pago).
+let _semPRDebug = {};
+
+function semPrevRealizado(win, projeto, filtro){
+  const iStr = _semISO(win.ini), fStr = _semISO(win.fim);
+  const hojeStr = _semISO(new Date());
+  const passBase = r => (!projeto || r.projeto===projeto) && (!filtro || r.filtro===filtro);
+
+  const inWindow = DATA.filter(r => passBase(r) && r.dt_venc && r.dt_venc>=iStr && r.dt_venc<=fStr);
+  const previstoRecs  = inWindow.filter(r => r.dt_cadastro && r.dt_cadastro < iStr);
+  const novosRecs     = inWindow.filter(r => r.dt_cadastro && r.dt_cadastro >= iStr);
+  const semDataRecs   = inWindow.filter(r => !r.dt_cadastro);
+  const realizadoRecs = inWindow.filter(r => r.status === 'Liquidado' || (r.status === 'Aberto' && r.dt_venc < hojeStr));
+
+  const previsto  = previstoRecs.reduce((s,r)=>s+r.valor,0);
+  const realizado = realizadoRecs.reduce((s,r)=>s+r.valor,0);
+  return {
+    previsto, previstoQtd: previstoRecs.length, realizado, realizadoQtd: realizadoRecs.length,
+    inWindowQtd: inWindow.length, novosQtd: novosRecs.length, semDataQtd: semDataRecs.length,
+    iStr, fStr, hojeStr, projeto, filtro
+  };
+}
+
+// Abre o modal de drill-down (reaproveita a estrutura já usada pelos rankings) mostrando,
+// título a título, por que cada lançamento com vencimento na semana entrou ou não no
+// Previsto, e se já foi de fato pago (Realizado) ou segue pendente.
+function semShowPRDetalhe(key){
+  const ctx = _semPRDebug[key];
+  if(!ctx) return;
+  const { iStr, fStr, projeto, filtro } = ctx;
+  const hojeStr = _semISO(new Date());
+  const passBase = r => (!projeto || r.projeto===projeto) && (!filtro || r.filtro===filtro);
+  const inWindow = DATA.filter(r => passBase(r) && r.dt_venc && r.dt_venc>=iStr && r.dt_venc<=fStr);
+
+  const previstos = inWindow.filter(r => r.dt_cadastro && r.dt_cadastro < iStr);
+  const novos     = inWindow.filter(r => r.dt_cadastro && r.dt_cadastro >= iStr);
+  const semData   = inWindow.filter(r => !r.dt_cadastro);
+  const realizados      = inWindow.filter(r => r.status === 'Liquidado');
+  const abertoVencido    = inWindow.filter(r => r.status === 'Aberto' && r.dt_venc < hojeStr);
+  const abertoAVencer    = inWindow.filter(r => r.status === 'Aberto' && r.dt_venc >= hojeStr);
+
+  document.getElementById('drillTitle').textContent =
+    `Detalhamento — vencimento entre ${_semFmt(_semParseISO(iStr))} e ${_semFmt(_semParseISO(fStr))}`;
+  document.getElementById('drillSub').innerHTML =
+    `${inWindow.length} título(s) vencem no período · <b style="color:var(--green-t)">${previstos.length} contam como Previsto</b> (cadastrados antes de ${_semFmt(_semParseISO(iStr))}) · `+
+    `${novos.length} cadastrados durante/depois da semana · `+
+    (semData.length ? `<b style="color:var(--yellow)">${semData.length} sem Data de Cadastro preenchida</b>` : `0 sem Data de Cadastro`) + `<br>`+
+    `<b style="color:var(--blue-t)">${realizados.length + abertoVencido.length} contam como Realizado</b> `+
+    `(${realizados.length} já Liquidados + ${abertoVencido.length} Abertos com vencimento já passado — baixa presumida atrasada) · `+
+    `${abertoAVencer.length} ainda não venceram (pendentes de verdade)`;
+
+  const sorted = [...inWindow].sort((a,b)=> (a.dt_cadastro||'9999-99-99').localeCompare(b.dt_cadastro||'9999-99-99'));
+  const rowsHtml = sorted.map(r=>{
+    let tag;
+    if(!r.dt_cadastro) tag = '<span class="drill-badge ab" style="background:var(--yellow);color:#1a1a1a;border-color:var(--yellow);">Sem cadastro</span>';
+    else if(r.dt_cadastro < iStr) tag = '<span class="drill-badge lq">Previsto</span>';
+    else tag = '<span class="drill-badge ab">Cadastro na semana</span>';
+    let pagTag;
+    if(r.status === 'Liquidado') pagTag = '<span class="drill-badge lq">✅ Liquidado</span>';
+    else if(r.dt_venc < hojeStr) pagTag = '<span class="drill-badge lq" style="opacity:.85;">✅ Realizado (venc. já passou)</span>';
+    else pagTag = '<span class="drill-badge ab" style="opacity:.7;">⏳ Ainda não venceu</span>';
+    return `<tr>
+      <td>${_semFmt(_semParseISO(r.dt_venc))}</td>
+      <td>${r.dt_cadastro ? _semFmt(_semParseISO(r.dt_cadastro)) : '—'}</td>
+      <td>${r.credor || '—'}</td>
+      <td>${tag}</td>
+      <td>${pagTag}</td>
+      <td class="num">${fR(r.valor)}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('drillBody').innerHTML = `
+    <table class="drill-table">
+      <thead><tr>
+        <th>Vencimento</th><th>Cadastro</th><th>Fornecedor</th><th>Classificação (cadastro)</th><th>Pagamento</th><th style="text-align:right;">Valor</th>
+      </tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>`;
+  document.getElementById('drillOverlay').classList.add('open');
+}
+
+function semBuildPrevRealizado(pr, parcial, key){
+  _semPRDebug[key] = { iStr: pr.iStr, fStr: pr.fStr, projeto: pr.projeto, filtro: pr.filtro };
+  const info = semPctInfo(pr.realizado, pr.previsto, 'previsto');
+  const varAbs = pr.realizado - pr.previsto;
+  const varColor = varAbs >= 0 ? 'var(--red)' : 'var(--green-t)';
+  const varSign = varAbs >= 0 ? '+' : '−';
+  const alertaSemData = pr.semDataQtd > 0
+    ? `<div class="sem-card-pr-warn">⚠ ${pr.semDataQtd} título(s) com vencimento no período estão sem Data de Cadastro preenchida — não contam no Previsto.</div>`
+    : '';
+  return `
+    <div class="sem-card-pr">
+      <div class="sem-card-pr-item">
+        <div class="sem-card-pr-lbl">Previsto</div>
+        <div class="sem-card-pr-val">${fR(pr.previsto)}</div>
+        <div class="sem-card-pr-sub">${pr.previstoQtd} título(s)</div>
+      </div>
+      <div class="sem-card-pr-item">
+        <div class="sem-card-pr-lbl">Realizado${parcial ? ' (em andamento)' : ''}</div>
+        <div class="sem-card-pr-val">${fR(pr.realizado)}</div>
+        <div class="sem-card-pr-sub">${pr.realizadoQtd} de ${pr.inWindowQtd} título(s) já liquidados</div>
+      </div>
+      <div class="sem-card-pr-item">
+        <div class="sem-card-pr-lbl">Variação</div>
+        <div class="sem-card-pr-val" style="color:${varColor};font-size:12.5px;">${varSign} ${fR(Math.abs(varAbs))}</div>
+        <div class="sem-card-pr-sub sem-card-pr-var">${info.html}</div>
+      </div>
+    </div>
+    ${alertaSemData}
+    <div class="sem-card-pr-link" onclick="semShowPRDetalhe('${key}')">🔍 Ver detalhamento título a título</div>`;
+}
+
+// ── Previsto x Realizado — versão mensal (aba Análises Mensais) ────────────
+// Mesma regra da aba Semanal (cadastro antes do início do período / vencimento dentro
+// dele = Previsto; baixa dentro do período = Realizado), só que a janela é o mês
+// corrente e o mês anterior, em vez da semana. Reaproveita semPrevRealizado/
+// semBuildPrevRealizado/semShowPRDetalhe sem alterar nada nelas (projeto/filtro=null
+// = sem filtro adicional, já que esta aba não tem seletor de Projeto/Tipo próprio).
+function _mesWindow(offsetMeses){
+  const hoje = new Date();
+  const y = hoje.getFullYear(), m = hoje.getMonth() + offsetMeses;
+  return { ini: new Date(y, m, 1), fim: new Date(y, m+1, 0) };
+}
+function _mesNome(win){
+  const nomes=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  return `${nomes[win.ini.getMonth()]}/${win.ini.getFullYear()}`;
+}
+
+function renderMonthlyPRCards(){
+  const elAnt = document.getElementById('mesPRAnterior');
+  const elAtu = document.getElementById('mesPRAtual');
+  if(!elAnt || !elAtu || typeof DATA === 'undefined' || !DATA.length) return;
+
+  const wMesAnt = _mesWindow(-1);
+  const wMesAtu = _mesWindow(0);
+
+  const prAnt = semPrevRealizado(wMesAnt, null, null);
+  const prAtu = semPrevRealizado(wMesAtu, null, null);
+
+  elAnt.querySelector('.mespr-titulo').textContent = _mesNome(wMesAnt);
+  elAnt.querySelector('.mespr-body').innerHTML = semBuildPrevRealizado(prAnt, false, 'mesAnt');
+
+  const hoje = new Date();
+  const ehMesAtualReal = wMesAtu.ini.getFullYear()===hoje.getFullYear() && wMesAtu.ini.getMonth()===hoje.getMonth();
+  elAtu.querySelector('.mespr-titulo').textContent = _mesNome(wMesAtu) + (ehMesAtualReal ? ' (em andamento)' : '');
+  elAtu.querySelector('.mespr-body').innerHTML = semBuildPrevRealizado(prAtu, ehMesAtualReal, 'mesAtu');
+}
+
 function semRenderWeekCards(projeto, filtro, iniStr, fimStr){
   if(typeof DATA==='undefined') return;
 
@@ -3304,12 +3504,14 @@ function semRenderWeekCards(projeto, filtro, iniStr, fimStr){
   const atu = sumWeek(wAtu);
   const prx = sumWeek(wPrx, {planejado:true});
 
+  const prAnt = semPrevRealizado(wAnt, projeto, filtro);
   document.getElementById('semWkAnterior').textContent = fR(ant.total);
-  document.getElementById('semWkAnteriorSub').innerHTML = `${ant.qtd} títulos · ${_semFmt(wAnt.ini)} a ${_semFmt(wAnt.fim)}${buildInsight(ant)}`;
+  document.getElementById('semWkAnteriorSub').innerHTML = `${ant.qtd} títulos · ${_semFmt(wAnt.ini)} a ${_semFmt(wAnt.fim)}${semBuildPrevRealizado(prAnt,false,'ant')}${buildInsight(ant)}`;
 
   const infoAtu = semPctInfo(atu.total, ant.total, 'semana anterior');
+  const prAtu = semPrevRealizado(wAtu, projeto, filtro);
   document.getElementById('semWkAtual').textContent = fR(atu.total);
-  document.getElementById('semWkAtualSub').innerHTML = `${atu.qtd} títulos · ${_semFmt(wAtu.ini)} a ${_semFmt(wAtu.fim)}<br>${infoAtu.html}${buildInsight(atu)}`;
+  document.getElementById('semWkAtualSub').innerHTML = `${atu.qtd} títulos · ${_semFmt(wAtu.ini)} a ${_semFmt(wAtu.fim)}<br>${infoAtu.html}${semBuildPrevRealizado(prAtu,true,'atu')}${buildInsight(atu)}`;
   const cardAtu = document.getElementById('semCardAtual');
   if(cardAtu) cardAtu.classList.toggle('kpi-alert', infoAtu.big);
 
