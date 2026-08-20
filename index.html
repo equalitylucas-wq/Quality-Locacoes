@@ -39,13 +39,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Ar
 .page.home-active .alert-box,
 .page.home-active .chips,
 .page.home-active #mainFilterToggleWrap,
-.page.home-active .exec-mode-banner,
 .page.home-active .tabs-nav{display:none!important;}
-
-/* MODO EXECUTIVO — esconde tudo que é ferramenta de analista (filtros, chips, auditoria) */
-body.exec-mode .analyst-only{display:none!important;}
-.exec-mode-banner{display:none;}
-body.exec-mode .exec-mode-banner{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--t3);background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:6px 12px;margin-bottom:14px;}
 
 /* HEADER & TABS */
 .hdr{display:flex;align-items:center;justify-content:space-between;padding-bottom:18px;border-bottom:1px solid var(--border2);margin-bottom:20px;flex-wrap:wrap;gap:12px;}
@@ -323,31 +317,6 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
       <span class="badge blq">Liquidado</span>
     </div>
     <div class="hgroup">
-      <div class="date-basis-wrap" title="Define qual data é usada como referência nas abas Painel Consolidado, Análises Mensais, Oscilações, Semanal e Explorador de Gastos. A aba DRE sempre usa Emissão, independente desta opção.">
-        <span class="date-basis-label"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Base:</span>
-        <select id="dateBasisSelect" class="fc" onchange="changeDateBasis(this.value)">
-          <option value="pagamento">Vencimento / Baixa</option>
-          <option value="emissao">Emissão</option>
-        </select>
-      </div>
-    </div>
-    <div class="hgroup">
-      <div class="settings-wrap">
-        <button class="tbtn settings-btn" onclick="toggleSettingsPanel()" id="settingsBtn"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Config</button>
-        <div class="settings-panel" id="settingsPanel">
-          <div class="settings-title">Limites de Alerta</div>
-          <div class="settings-row">
-            <label for="cfgPctThreshold">Variação (semana/próxima) ≥</label>
-            <div class="settings-input"><input type="number" id="cfgPctThreshold" min="1" max="300" step="1"> %</div>
-          </div>
-          <div class="settings-row">
-            <label for="cfgConcThreshold">Concentração de fornecedor ≥</label>
-            <div class="settings-input"><input type="number" id="cfgConcThreshold" min="1" max="100" step="1"> %</div>
-          </div>
-          <button class="btn bu" style="width:100%;margin-top:8px;" onclick="saveSettings()">Salvar</button>
-        </div>
-      </div>
-      <button class="tbtn exec-mode-btn" onclick="toggleExecMode()"><svg class="ic" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>Modo Executivo</button>
       <button class="tbtn" onclick="toggleTheme()" id="tbtn"><svg class="ic" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>Modo escuro</button>
     </div>
   </div>
@@ -361,13 +330,13 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
   <button class="tab-link" data-tab="semanal" onclick="switchTab('semanal')"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/></svg>Apresentação Semanal</button>
   <button class="tab-link" data-tab="explorer" onclick="switchTab('explorer')"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>Explorador de Gastos</button>
   <button class="tab-link" data-tab="dre" onclick="switchTab('dre')"><svg class="ic" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>DRE (Emissão)</button>
+  <button class="tab-link" data-tab="config" onclick="switchTab('config')"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Configurações</button>
 </div>
 
 <div class="alert-box analyst-only" id="auditAlert" onclick="filterUnclassified()">
   <div>⚠️ <span id="auditCount">0</span> lançamentos pendentes de classificação (Sem CR, Projeto ou Natureza). Clique aqui para isolar.</div>
 </div>
 
-<div class="exec-mode-banner"><svg class="ic" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>Modo Executivo ativo — filtros e ferramentas de análise ocultos. Use o botão no topo para alternar para o Modo Analista.</div>
 
 <div style="margin-bottom:10px;" id="mainFilterToggleWrap" class="analyst-only">
   <button class="btn bu" id="mainFilterToggleBtn" onclick="toggleMainFilters()"><svg class="ic" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>Filtros</button>
@@ -437,7 +406,6 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
 
 <div id="tab-home" class="tab-content active">
   <div style="display:flex;justify-content:flex-end;gap:8px;padding-top:8px;">
-    <button class="tbtn exec-mode-btn" onclick="toggleExecMode()"><svg class="ic" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>Modo Executivo</button>
     <button class="tbtn" onclick="toggleTheme()"><svg class="ic" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>Modo escuro</button>
   </div>
   <div class="home-hero">
@@ -603,7 +571,6 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
 </div>
 
 <div id="tab-explorer" class="tab-content">
-  <div class="exec-mode-banner"><svg class="ic" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>Modo Executivo ativo — filtros ocultos. Use o botão no topo para alternar para o Modo Analista.</div>
   <div style="margin-bottom:10px;" class="analyst-only">
     <button class="btn bu" id="expFilterToggleBtn" onclick="toggleExpFilters()"><svg class="ic" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>Filtros</button>
   </div>
@@ -703,7 +670,6 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
 </div>
 
 <div id="tab-dre" class="tab-content">
-  <div class="exec-mode-banner"><svg class="ic" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>Modo Executivo ativo — filtros ocultos. Use o botão no topo para alternar para o Modo Analista.</div>
   <div style="margin-bottom:10px;" class="analyst-only">
     <button class="btn bu" id="dreFilterToggleBtn" onclick="toggleDreFilters()"><svg class="ic" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>Filtros</button>
   </div>
@@ -749,6 +715,46 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
   <div class="card">
     <div class="ct">Demonstrativo por Natureza Financeira <span>agrupado por tipo de despesa, baseado na Data de Emissão (regime de competência) — tudo que foi gerado no mês, pago ou não. Compara com o mês anterior.</span></div>
     <div id="dreTableWrap" style="overflow-x:auto;"></div>
+  </div>
+</div>
+
+<div id="tab-config" class="tab-content">
+  <div class="sec" style="color:var(--blue-t)">🗓️ Base de Data de Referência</div>
+  <div class="card" style="margin-bottom:20px;">
+    <div class="ct">Qual data usar como referência <span>(define o que conta como "quando aconteceu" nas abas Painel Consolidado, Análises Mensais, Oscilações, Semanal e Explorador de Gastos. A aba DRE sempre usa Emissão, independente desta opção.)</span></div>
+    <select id="dateBasisSelect" class="fc" onchange="changeDateBasis(this.value)" style="margin-top:8px;padding:8px 12px;border:1px solid var(--border2);border-radius:8px;background:var(--bg2);color:var(--t1);font-size:13px;min-width:260px;">
+      <option value="pagamento">Vencimento / Baixa</option>
+      <option value="emissao">Emissão</option>
+    </select>
+  </div>
+
+  <div class="sec" style="color:var(--yellow)">🔔 Limites de Alerta</div>
+  <div class="card" style="margin-bottom:20px;">
+    <div class="ct">Quando destacar uma variação como atenção <span>(controla o ⚠ atenção que aparece nos cards de semana/próxima semana e nos rankings de concentração de fornecedor)</span></div>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:10px;max-width:420px;">
+      <div class="settings-row">
+        <label for="cfgPctThreshold">Variação (semana/próxima) ≥</label>
+        <div class="settings-input"><input type="number" id="cfgPctThreshold" min="1" max="300" step="1"> %</div>
+      </div>
+      <div class="settings-row">
+        <label for="cfgConcThreshold">Concentração de fornecedor ≥</label>
+        <div class="settings-input"><input type="number" id="cfgConcThreshold" min="1" max="100" step="1"> %</div>
+      </div>
+      <button class="btn bu" style="width:fit-content;" onclick="saveSettings()">Salvar limites</button>
+    </div>
+  </div>
+
+  <div class="sec" style="color:var(--blue-t)">⚙️ Classificação de Naturezas Financeiras</div>
+  <div class="card" style="margin-bottom:20px;">
+    <div class="ct">Operacional x Não Operacional <span>(define aqui, por Natureza Financeira, o que conta como Despesas Operacionais em todo o dashboard — substitui a coluna "Filtro" da planilha. Salvo só neste navegador.)</span></div>
+    <div style="font-size:12px;color:var(--t4);margin:-4px 0 14px;line-height:1.5;">
+      Toda vez que uma Natureza Financeira nova aparecer na base, ela entra aqui automaticamente como <b>Despesas Operacionais</b> até você reclassificar. Mudanças aqui aplicam na hora em todas as abas (Painel Consolidado, Semanal, Análises Mensais etc.) — não precisa recarregar a página.
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
+      <input type="text" id="cfgNatSearch" placeholder="Buscar natureza..." oninput="renderConfigTab()" style="flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--border2);border-radius:8px;background:var(--bg2);color:var(--t1);font-size:13px;">
+      <button class="btn bc" onclick="restaurarNatConfigPadrao()" title="Apaga a configuração salva e recalcula a partir do que está escrito na planilha hoje">↺ Restaurar padrão da planilha</button>
+    </div>
+    <div id="cfgNatTable" style="overflow-x:auto;max-height:560px;overflow-y:auto;"></div>
   </div>
 </div>
 
@@ -799,7 +805,6 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
 </div>
 
 <div id="tab-osc" class="tab-content">
-  <div class="exec-mode-banner"><svg class="ic" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>Modo Executivo ativo — filtros ocultos. Use o botão no topo para alternar para o Modo Analista.</div>
   <div style="margin-bottom:10px;" class="analyst-only">
     <button class="btn bu" id="oscFilterToggleBtn" onclick="toggleOscFilters()"><svg class="ic" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>Filtros</button>
   </div>
@@ -898,7 +903,6 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
 </div>
 
 <div id="tab-semanal" class="tab-content">
-  <div class="exec-mode-banner"><svg class="ic" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>Modo Executivo ativo — filtros ocultos. Use o botão no topo para alternar para o Modo Analista.</div>
   <div style="margin-bottom:10px;" class="analyst-only">
     <button class="btn bu" id="semFilterToggleBtn" onclick="toggleSemFilters()"><svg class="ic" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>Filtros</button>
   </div>
@@ -990,7 +994,7 @@ select.fc{cursor:pointer;min-width:120px;-webkit-appearance:none;appearance:none
   </div>
 </div>
 
-<div class="footer" id="footer">Quality Locações · Desenvolvedor: Lucas Santos</div>
+<div class="footer"><span id="footer">Quality Locações · Desenvolvedor: Lucas Santos</span> · <span style="opacity:.6;" title="Se essa data parecer antiga, é cache do navegador — não código/dado desatualizado no servidor. Ctrl+Shift+R ou veja Application → Service Workers no DevTools.">build 2026-08-15 17:10</span></div>
 </div>
 
 <div class="drill-overlay" id="drillOverlay" onclick="if(event.target===this) semCloseDrill()">
@@ -1185,7 +1189,7 @@ const PREF_FILTER_IDS = ['fini','ffim','femp','fcr','ffiltro','forigem','fstatus
 function savePrefs(){
   try{
     const data = {
-      theme: dark ? 'dark' : 'light', execMode, filters: {}, msf: { fproj: MSF.fproj, fpf: MSF.fpf },
+      theme: dark ? 'dark' : 'light', filters: {}, msf: { fproj: MSF.fproj, fpf: MSF.fpf },
       pctThreshold: ALERT_PCT_THRESHOLD, concThreshold: CONCENTRATION_THRESHOLD, dateBasis: DATE_BASIS
     };
     PREF_FILTER_IDS.forEach(id=>{ const el=document.getElementById(id); if(el) data.filters[id]=el.value; });
@@ -1204,10 +1208,9 @@ function applyThemePref(){
     dark = false;
     document.documentElement.setAttribute('data-theme','light');
   }
-  document.querySelectorAll('.tbtn:not(.exec-mode-btn):not(.settings-btn)').forEach(b=>b.innerHTML = dark ? `<svg class="ic" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>Modo escuro` : `<svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>Modo claro`);
-  // Modo Executivo/Analista — padrão é Executivo (primeira impressão para diretores)
-  if(prefs && prefs.execMode === false) execMode = false;
-  applyExecMode();
+  document.querySelectorAll('.tbtn').forEach(b=>b.innerHTML = dark ? `<svg class="ic" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>Modo escuro` : `<svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>Modo claro`);
+  // Modo Executivo/Analista foi removido — dashboard sempre mostra filtros e
+  // ferramentas de análise (não usado nesta instalação).
   // Limites de alerta configuráveis
   if(prefs && typeof prefs.pctThreshold === 'number' && prefs.pctThreshold > 0) ALERT_PCT_THRESHOLD = prefs.pctThreshold;
   if(prefs && typeof prefs.concThreshold === 'number' && prefs.concThreshold > 0) CONCENTRATION_THRESHOLD = prefs.concThreshold;
@@ -1252,42 +1255,16 @@ function changeDateBasis(value){
 let ALERT_PCT_THRESHOLD = 20;   // variação % que dispara destaque nos cards de semana
 let CONCENTRATION_THRESHOLD = 20; // % de concentração de fornecedor que dispara o alerta
 
-function toggleSettingsPanel(){
-  const panel = document.getElementById('settingsPanel');
-  if(panel) panel.classList.toggle('open');
-}
 function saveSettings(){
   const pct = parseFloat(document.getElementById('cfgPctThreshold').value);
   const conc = parseFloat(document.getElementById('cfgConcThreshold').value);
   if(!isNaN(pct) && pct > 0) ALERT_PCT_THRESHOLD = pct;
   if(!isNaN(conc) && conc > 0) CONCENTRATION_THRESHOLD = conc;
   savePrefs();
-  toggleSettingsPanel();
   if(typeof renderExecSummary==='function') renderExecSummary();
   if(typeof renderSemanalTab==='function') renderSemanalTab();
 }
-// Fecha o painel de configurações ao clicar fora dele
-document.addEventListener('click', (e)=>{
-  const wrap = document.querySelector('.settings-wrap');
-  if(wrap && !wrap.contains(e.target)) document.getElementById('settingsPanel')?.classList.remove('open');
-});
 
-// ── MODO EXECUTIVO / ANALISTA ─────────────────────────────────────────────────
-// Executivo (padrão): esconde filtros, chips e alerta de auditoria em todas as abas —
-// pensado para quem só quer olhar os números, sem as ferramentas de trabalho do analista.
-let execMode = true;
-function toggleExecMode(){
-  execMode = !execMode;
-  applyExecMode();
-  savePrefs();
-}
-function applyExecMode(){
-  document.body.classList.toggle('exec-mode', execMode);
-  document.querySelectorAll('.exec-mode-btn').forEach(b=>{
-    b.innerHTML = execMode ? `<svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Modo Analista` : `<svg class="ic" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>Modo Executivo`;
-    b.title = execMode ? 'Mostrar filtros e ferramentas de análise' : 'Ocultar filtros e ferramentas de análise';
-  });
-}
 function restoreFilterPrefs(){
   const prefs = loadPrefs();
   if(!prefs) return;
@@ -1318,13 +1295,159 @@ let dark=true;
 function toggleTheme(){
   dark=!dark;
   document.documentElement.setAttribute('data-theme',dark?'dark':'light');
-  document.querySelectorAll('.tbtn:not(.exec-mode-btn):not(.settings-btn)').forEach(b=>b.innerHTML = dark ? `<svg class="ic" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>Modo escuro` : `<svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>Modo claro`);
+  document.querySelectorAll('.tbtn').forEach(b=>b.innerHTML = dark ? `<svg class="ic" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>Modo escuro` : `<svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>Modo claro`);
   savePrefs();
   process(getF());
 }
 function gv(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
 
 // ── FORMAT ───────────────────────────────────────────────────────────────────
+// ── Configuração de Naturezas Financeiras (Operacional x Não Operacional) ──
+// Substitui, para efeitos de TODO o dashboard, a coluna "Filtro" que vem da
+// planilha. Salvo só neste navegador (localStorage) — não sincroniza entre
+// dispositivos/pessoas, por escolha explícita.
+const NAT_CFG_KEY = 'qNatConfig_v1';
+const NAT_OPCOES = ['Despesas Operacionais', 'Despesas Não Operacionais'];
+
+function loadNatConfig(){
+  try { return JSON.parse(localStorage.getItem(NAT_CFG_KEY) || '{}'); }
+  catch(e){ return {}; }
+}
+function saveNatConfig(cfg){
+  try { localStorage.setItem(NAT_CFG_KEY, JSON.stringify(cfg)); } catch(e){}
+}
+
+// Deriva a classificação "natural" a partir do que está escrito HOJE na coluna
+// "Filtro" da planilha (usa r.filtro_raw, que nunca é sobrescrito) — pega o valor
+// mais comum por Natureza. Roda sempre, a cada carregamento, então se você mudar
+// o Tipo de Despesa na planilha, isso é refletido automaticamente aqui.
+function deriveDefaultNatConfig(){
+  const counts = {};
+  DATA.forEach(r=>{
+    const nat = r.planfin || '[Não classificado]';
+    const f = NAT_OPCOES.includes(r.filtro_raw) ? r.filtro_raw : 'Despesas Operacionais';
+    counts[nat] = counts[nat] || {};
+    counts[nat][f] = (counts[nat][f]||0) + 1;
+  });
+  const cfg = {};
+  Object.keys(counts).forEach(nat=>{
+    let melhor = NAT_OPCOES[0], melhorQtd = -1;
+    Object.keys(counts[nat]).forEach(f=>{
+      if(counts[nat][f] > melhorQtd){ melhorQtd = counts[nat][f]; melhor = f; }
+    });
+    cfg[nat] = melhor;
+  });
+  return cfg;
+}
+
+// Aplica a classificação final sobre r.filtro de cada registro em DATA:
+//   1) se a Natureza tiver uma classificação MANUAL (mexida por você aqui no
+//      dashboard), essa manda — tem prioridade sobre a planilha;
+//   2) senão, segue automaticamente o que está escrito na planilha hoje — então
+//      mudar o Tipo de Despesa direto na planilha também funciona, pra quem
+//      você nunca reclassificou manualmente por aqui.
+// O localStorage guarda SÓ as manuais (NAT_CFG_KEY) — o resto é recalculado
+// sempre a partir da base, nunca fica "preso" numa foto antiga da planilha.
+function applyNatConfig(){
+  const cfgManual = loadNatConfig();
+  const cfgPadrao = deriveDefaultNatConfig();
+  DATA.forEach(r=>{
+    const nat = r.planfin || '[Não classificado]';
+    r.filtro = cfgManual[nat] || cfgPadrao[nat] || 'Despesas Operacionais';
+  });
+  if(typeof renderConfigTab === 'function') renderConfigTab();
+}
+
+function setNatConfig(natureza, valor){
+  const cfg = loadNatConfig();
+  cfg[natureza] = valor;
+  saveNatConfig(cfg);
+  applyNatConfig();
+  process(getF());
+  if(typeof renderSemanalTab === 'function') renderSemanalTab();
+}
+
+function restaurarNatConfigPadrao(){
+  if(!confirm('Isso apaga TODAS as classificações manuais salvas neste navegador — a partir daí, tudo volta a seguir automaticamente o que está escrito na coluna "Filtro" da planilha. Continuar?')) return;
+  saveNatConfig({});
+  applyNatConfig();
+  process(getF());
+  if(typeof renderSemanalTab === 'function') renderSemanalTab();
+}
+
+function removerNatConfigManual(natureza){
+  const cfg = loadNatConfig();
+  delete cfg[natureza];
+  saveNatConfig(cfg);
+  applyNatConfig();
+  process(getF());
+  if(typeof renderSemanalTab === 'function') renderSemanalTab();
+}
+
+function renderConfigTab(){
+  const el = document.getElementById('cfgNatTable');
+  if(!el || typeof DATA === 'undefined' || !DATA.length) return;
+
+  const cfgManual = loadNatConfig();
+  const busca = (document.getElementById('cfgNatSearch')?.value || '').trim().toLowerCase();
+
+  // Agrega qtd/valor por natureza a partir da base atual (não filtrada pelos
+  // filtros globais — essa aba mostra o cenário completo, de propósito).
+  const agg = {};
+  DATA.forEach(r=>{
+    const nat = r.planfin || '[Não classificado]';
+    agg[nat] = agg[nat] || { qtd: 0, valor: 0 };
+    agg[nat].qtd++;
+    agg[nat].valor += r.valor;
+  });
+
+  let naturezas = Object.keys(agg);
+  if(busca) naturezas = naturezas.filter(n => n.toLowerCase().includes(busca));
+  naturezas.sort((a,b)=> agg[b].valor - agg[a].valor);
+
+  if(!naturezas.length){
+    el.innerHTML = `<div style="padding:20px;text-align:center;color:var(--t4);font-size:13px;">Nenhuma natureza encontrada${busca ? ' pra "'+busca+'"' : ''}.</div>`;
+    return;
+  }
+
+  let html = `<table class="drill-table" style="width:100%;">
+    <thead><tr>
+      <th>Natureza Financeira</th>
+      <th style="text-align:right;">Títulos</th>
+      <th style="text-align:right;">Valor total</th>
+      <th>Classificação</th>
+      <th>Origem</th>
+    </tr></thead><tbody>`;
+
+  naturezas.forEach(nat=>{
+    const ehManual = !!cfgManual[nat];
+    // pega o valor efetivo já aplicado em r.filtro (feito por applyNatConfig)
+    const rec = DATA.find(r => (r.planfin || '[Não classificado]') === nat);
+    const valorAtual = rec ? rec.filtro : 'Despesas Operacionais';
+    const natEsc = nat.replace(/'/g, "\\'").replace(/"/g,'&quot;');
+    const isOp = valorAtual === 'Despesas Operacionais';
+    html += `<tr>
+      <td>${nat}</td>
+      <td class="num">${agg[nat].qtd}</td>
+      <td class="num">${fR(agg[nat].valor)}</td>
+      <td>
+        <select onchange="setNatConfig('${natEsc}', this.value)" style="padding:5px 8px;border-radius:6px;border:1px solid var(--border2);background:${isOp ? 'var(--green-d)' : 'var(--yellow-d, var(--border2))'};color:var(--t1);font-size:12px;font-weight:600;cursor:pointer;">
+          <option value="Despesas Operacionais" ${isOp ? 'selected' : ''}>Operacional</option>
+          <option value="Despesas Não Operacionais" ${!isOp ? 'selected' : ''}>Não Operacional</option>
+        </select>
+      </td>
+      <td style="font-size:11px;">
+        ${ehManual
+          ? `<span style="color:var(--yellow);font-weight:600;">🔧 Manual</span> <span style="cursor:pointer;color:var(--blue-t);text-decoration:underline;margin-left:4px;" onclick="removerNatConfigManual('${natEsc}')" title="Voltar a seguir automaticamente o que está na planilha">reverter</span>`
+          : `<span style="color:var(--t4);">📄 Segue a planilha</span>`}
+      </td>
+    </tr>`;
+  });
+
+  html += `</tbody></table>`;
+  el.innerHTML = html;
+}
+
 function fR(v){
   if(v==null||isNaN(v))return'—';
   return'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1718,6 +1841,7 @@ function process(records){
   // só que com janela de calendário mensal em vez de semanal). Roda sempre que process()
   // roda, então acompanha o carregamento normal dos dados sem hook extra.
   renderMonthlyPRCards();
+  if(typeof renderConfigTab==='function') renderConfigTab();
 
 
 
@@ -2110,11 +2234,16 @@ async function loadFromSheet(){
         cr:           String(o.cr||'').trim(),
         projeto:      String(o.projeto||'').trim(),
         filtro:       String(o.filtro||'').trim(),
+        filtro_raw:   String(o.filtro||'').trim(), // valor original da planilha, nunca sobrescrito pela config manual
         parcelamento: String(o.parcelamento||'').trim(),
         tipocob:      String(o.tipocob||'').trim(),
         origem:       String(o.origem||'').trim(),
       };
     }).filter(r => r.credor || r.valor);
+
+    // Aplica a classificação Operacional x Não Operacional configurada na aba
+    // Configurações (substitui a coluna "Filtro" vinda da planilha).
+    applyNatConfig();
 
     const now = new Date().toLocaleString('pt-BR');
     document.getElementById('dsub').textContent = `Conectado via Apps Script API · Atualizado em ${now}`;
